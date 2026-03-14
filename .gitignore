@@ -1,0 +1,21 @@
+# python
+__pycache__/
+*.pyc
+.venv/
+*.egg-info/
+.dist/
+data
+
+# mac
+.DS_Store
+
+# outputs 
+outputs/
+
+# keep folder structure but ignore contents
+data/raw-files/*
+data/library-files/*
+
+# keep the folders
+!data/raw-files/.gitkeep
+!data/library-files/.gitkeep

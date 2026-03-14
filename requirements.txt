@@ -1,0 +1,7 @@
+pandas
+numpy
+pyteomics
+natsort
+halo
+pyyaml
+matplotlib

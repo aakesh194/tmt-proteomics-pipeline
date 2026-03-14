@@ -1,0 +1,86 @@
+# =============================================================================
+# PIPELINE CONFIGURATION
+# Edit this file to configure your analysis. Do not edit the .py files.
+# =============================================================================
+
+
+# --- Metadata Files ----------------------------------------------------------
+# CSV files describing your experiments (one row per experiment type)
+meta_prot_csv: "data/metaFiles_gProt_BHA_2.csv"
+meta_phos_csv: "data/metaFiles_gphos_BHA_2.csv"
+
+# PhosphoSitePlus motif reference file
+phos_site_csv: "data/Phosphosite Motifs_M.csv"
+
+# Column in the metadata CSV that identifies each experiment
+meta_index: "expType"
+
+# Column names inside the metadata CSV
+meta_cols:
+  psms:     "PSMs"
+  mgf:      "mgf_file"
+  library:  "library"
+  pepts:    "pepts"
+  mods:     "mods"
+  sup_corr: "sup_corr"
+
+
+# --- Folders -----------------------------------------------------------------
+# Where your raw instrument files live
+raw_dir: "data/raw-files"
+# Where spectral library files live
+lib_dir: "data/library-files"
+# Where all output files will be written
+out_dir: "outputs"
+
+
+# --- PSM Filtering -----------------------------------------------------------
+# Only PSMs whose mass error (in ppm) falls within this window are kept
+delta_ppm_max: 5
+
+# Maximum allowed expectation value (lower = stricter)
+expectation_max: 0.05
+
+# Minimum Ions Score
+ions_score_min: 15
+
+# Only keep PSMs whose Modifications field contains this string
+require_mod_contains: "TMT"
+
+
+# --- Abundance / Channels ----------------------------------------------------
+# Text that identifies abundance columns in the PSM file
+abundance_contains: "Abundance"
+
+# Fraction of TMT channels that must have a value for a PSM to be kept
+# 0.33 means at least 1/3 of channels must be present
+min_fraction_channels_present: 0.33
+
+
+# --- Bridge / Pool Channels --------------------------------------------------
+# Regex pattern identifying pool/bridge channels (used for normalization)
+pool_regex: "BRG"
+bridge_regex: "B.*\\d+"
+
+
+# --- Phospho-Specific Settings -----------------------------------------------
+# Minimum average abundance for phospho PSMs
+phos_min_abundance: 1000
+
+# Minimum PhosphoRS site probability (0-100); higher = stricter localization
+phos_ptmrs_threshold: 50
+
+# Set to true to filter for phosphotyrosine (pY) experiments automatically
+phos_filter_pY: true
+
+
+# --- QC Heatmap --------------------------------------------------------------
+# Number of top variable proteins/sites to show in QC heatmap
+qc_top_n: 300
+
+# Apply z-score normalization to heatmap (true/false)
+qc_zscore: true
+
+
+# --- Notes -------------------------------------------------------------------
+notes: ""
