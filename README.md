@@ -1,4 +1,4 @@
-# omics-pipeline
+# tmt-proteomics-pipeline
 
 A command-line pipeline for processing raw DDA TMT mass spectrometry proteomics and phosphoproteomics data from Proteome Discoverer search results.
 
@@ -8,7 +8,7 @@ A command-line pipeline for processing raw DDA TMT mass spectrometry proteomics 
 
 ## Setup
 ```bash
-git clone https://github.com/aakesh194/omics-pipeline.git
+git clone https://github.com/aakesh194/tmt-proteomics-pipeline.git
 python3 -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
 ```

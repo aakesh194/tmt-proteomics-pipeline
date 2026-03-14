@@ -70,6 +70,9 @@ phos_min_abundance: 1000
 # Minimum PhosphoRS site probability (0-100); higher = stricter localization
 phos_ptmrs_threshold: 50
 
+# Regex pattern for PTM filtering in the Modifications column
+phos_mod_filter: "Phos"
+
 # Set to true to filter for phosphotyrosine (pY) experiments automatically
 phos_filter_pY: true
 

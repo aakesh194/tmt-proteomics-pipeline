@@ -4,7 +4,6 @@ __pycache__/
 .venv/
 *.egg-info/
 .dist/
-data
 
 # mac
 .DS_Store
@@ -12,10 +11,10 @@ data
 # outputs 
 outputs/
 
-# keep folder structure but ignore contents
+# data
 data/raw-files/*
 data/library-files/*
+data/*.csv
 
-# keep the folders
 !data/raw-files/.gitkeep
 !data/library-files/.gitkeep

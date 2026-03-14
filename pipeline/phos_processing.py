@@ -59,8 +59,9 @@ def phos_filter(df, exp_type, cfg):
     phosfilter = phosfilter.drop('AbundAve', axis=1)
     #print(f"      After abundance filter (>={cfg['phos_min_abundance']}): {len(phosfilter)}")
     
-    # Keep only phospho peptides
-    phosfilter = phosfilter[phosfilter['Modifications'].str.contains("Phos", na=False)]
+    # Keep only PTMs of interest (configurable)
+    mod_filter = cfg.get("phos_mod_filter", "Phos")
+    phosfilter = phosfilter[phosfilter['Modifications'].str.contains(mod_filter, na=False)]
     #print(f"      After phospho filter: {len(phosfilter)}")
     
     # Filter for pY if specified

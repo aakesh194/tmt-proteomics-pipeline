@@ -41,6 +41,7 @@ _DEFAULTS = {
 
     "phos_min_abundance": 1000,
     "phos_ptmrs_threshold": 50,
+    "phos_mod_filter": "Phos",
     "phos_filter_pY": True,
     "phos_site_csv": "Phosphosite Motifs_M.csv",
 
