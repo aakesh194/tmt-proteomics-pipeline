@@ -332,7 +332,7 @@ def to_matrix(df, id_cols):
 
 
 def pick_post_bridge_csv(cfg):
-    post_dir = cfg.get("post_bridge_dir", os.path.join(cfg["out_dir"], "After bridging"))
+    post_dir = cfg.get("post_bridge_dir", os.path.join(cfg["out_dir"], "after-bridging"))
     prefix = cfg.get("post_bridge_prefix", "gProt")
     candidates = [
         f"{prefix}_brgA_n.csv",

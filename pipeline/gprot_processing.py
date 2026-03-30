@@ -66,7 +66,10 @@ def sup_Corrections(df, cfg):
     rawSup = df[df['AbundAve'] >= df['AbundAve'].quantile(0.75)]
     
     # Sum PSMs by gene, protein, sequence
+
+    # NEW CHANGE IF SELECTING TOP 25%
     psmsSum = df.set_index(['Gene', 'Master Protein Accessions', 'Sequence'])
+    #psmsSum = rawSup.set_index(['Gene', 'Master Protein Accessions', 'Sequence'])
     psmsSum = psmsSum.groupby(['Gene', 'Master Protein Accessions', 'Sequence']).agg('sum')
     abund = psmsSum.loc[:, psmsSum.columns.str.contains(cfg["abundance_contains"])]
     psmsSum2 = psmsSum.assign(AbundAve=abund.mean(axis=1))
@@ -136,9 +139,9 @@ def process_gprot_dataset(index, dataDF, cfg):
     with Halo(spinner="dots", color="cyan") as sp:
         # Load input files
         sp.text = f"  {out_prefix} — reading files"
+
         psms = pd.read_csv(psms_path, sep="\t")
         mgf_dict = mgf.read(mgf_path)
-    
         lib_df = pd.read_csv(lib_path)
         if lib_df["headers"].duplicated().any():
             raise ValueError(f"Duplicate library headers in {lib_path}")
@@ -164,11 +167,11 @@ def process_gprot_dataset(index, dataDF, cfg):
         corrPept = peps.copy()
         for col in corrProt.columns:
             if col in corrSum.columns:
-                corrProt[col] = corrProt[col] / corrSum[col].iloc[0] #corrSum[col][0] 
+                corrProt[col] = corrProt[col] / corrSum[col][0] 
         
         for col in corrPept.columns:
             if col in corrSum.columns:
-                corrPept[col] = corrPept[col] / corrSum[col].iloc[0] #corrSum[col][0]
+                corrPept[col] = corrPept[col] / corrSum[col][0]
 
         # Rename columns using library mapping
         for x in corrProt.columns:
@@ -259,7 +262,7 @@ def run_gprot_pipeline(cfg=None, exp_types=None):
             combined_df = pd.read_csv(post_csv)
             combined_mat = to_matrix(combined_df, ["Gene", "Accessions"])
             out_png = os.path.join(
-                cfg.get("post_bridge_dir", os.path.join(out_dir, "After bridging")),
+                cfg.get("post_bridge_dir", os.path.join(out_dir, "after-bridging")),
                 f"{cfg.get('post_bridge_prefix', 'gProt')}_QC_heatmap_bridged.png",
             )
             qc_heatmap_post_bridge(
