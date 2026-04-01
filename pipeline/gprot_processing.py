@@ -61,19 +61,26 @@ def sup_Corrections(df, cfg):
     # Sup = Sup.mean(axis=0).to_frame().transpose()
     #---#
     
-        
+    use_top = cfg.get("gprot_use_top_quantile", False)
+    q = cfg.get("gprot_top_quantile", 0.75)
+
+    base_df = df
+    if use_top:
+        base_df = df[df["AbundAve"] >= df["AbundAve"].quantile(q)]
+
+    psmsSum = base_df.set_index(["Gene", "Master Protein Accessions", "Sequence"])
+
     # Select top 25% most abundant PSMs
-    rawSup = df[df['AbundAve'] >= df['AbundAve'].quantile(0.75)]
+    #rawSup = df[df['AbundAve'] >= df['AbundAve'].quantile(0.75)]
     
     # Sum PSMs by gene, protein, sequence
 
-    # NEW CHANGE IF SELECTING TOP 25%
-    psmsSum = df.set_index(['Gene', 'Master Protein Accessions', 'Sequence'])
+    #psmsSum = df.set_index(['Gene', 'Master Protein Accessions', 'Sequence'])
     #psmsSum = rawSup.set_index(['Gene', 'Master Protein Accessions', 'Sequence'])
     psmsSum = psmsSum.groupby(['Gene', 'Master Protein Accessions', 'Sequence']).agg('sum')
     abund = psmsSum.loc[:, psmsSum.columns.str.contains(cfg["abundance_contains"])]
     psmsSum2 = psmsSum.assign(AbundAve=abund.mean(axis=1))
-    psmsSum2 = psmsSum.reset_index()
+    psmsSum2 = psmsSum2.reset_index()
     
     # Calculate correction factors
     Sup = psmsSum2.loc[:, psmsSum2.columns.str.contains(cfg["abundance_contains"])].div(psmsSum2['AbundAve'], axis=0)
@@ -141,6 +148,7 @@ def process_gprot_dataset(index, dataDF, cfg):
         sp.text = f"  {out_prefix} — reading files"
 
         psms = pd.read_csv(psms_path, sep="\t")
+        psm_start = len(psms)
         mgf_dict = mgf.read(mgf_path)
         lib_df = pd.read_csv(lib_path)
         if lib_df["headers"].duplicated().any():
@@ -150,12 +158,14 @@ def process_gprot_dataset(index, dataDF, cfg):
         # Filter and impute PSMs
         sp.text = f"  {out_prefix} — filtering..."
         PSMdf = nan_imputation(PSM_filter(psms, libs, cfg), mgf_dict, cfg)
+        qc_warn_no_row_change("PSM filtering+imputation", psm_start, len(PSMdf), context=out_prefix)
 
         # Calculate corrections
         sp.text = f"  {out_prefix} — corrections..."
         peps, corrSum = sup_Corrections(PSMdf, cfg)
         corrDict[index] = corrSum
         sumPSMdf = sum_peps(PSMdf)
+        qc_warn_no_row_change("peptide summarization", len(PSMdf), len(sumPSMdf), context=out_prefix)
         sumPSM[index] = sumPSMdf
 
         # Save correction factors
@@ -172,6 +182,9 @@ def process_gprot_dataset(index, dataDF, cfg):
         for col in corrPept.columns:
             if col in corrSum.columns:
                 corrPept[col] = corrPept[col] / corrSum[col][0]
+
+        qc_warn_no_value_change("correction factor (proteins)", sumPSMdf, corrProt, context=out_prefix, cols=corrSum.columns)
+        qc_warn_no_value_change("correction factor (peptides)", peps, corrPept, context=out_prefix, cols=corrSum.columns)
 
         # Rename columns using library mapping
         for x in corrProt.columns:
@@ -192,6 +205,20 @@ def process_gprot_dataset(index, dataDF, cfg):
         corr_pept_path = os.path.join(out_dir, f"{out_prefix}_pepts_corr.csv")
         corrProt.to_csv(corr_prot_path)
         corrPept.to_csv(corr_pept_path)
+
+        if not cfg.get("gprot_pool_bridge") and cfg.get("qc_heatmap_no_bridge", True):
+            id_cols = ["Gene", "Accessions"]
+            sample_cols = [c for c in corrProt.columns if c not in id_cols]
+            qc_mat = corrProt.set_index(id_cols)[sample_cols]
+            if qc_mat.shape[0] > 0 and qc_mat.shape[1] > 0:
+                out_png = os.path.join(out_dir, f"{out_prefix}_QC_heatmap_no_bridge.png")
+                qc_heatmap_post_bridge(
+                    qc_mat.dropna(),
+                    out_png=out_png,
+                    top_n=cfg["qc_top_n"],
+                    zscore=cfg["qc_zscore"],
+                    title=f"{out_prefix} QC heatmap (no bridge)",
+                )
 
         sp.succeed(f"  {out_prefix} — proteins: {len(sumPSMdf)} | saved: {corr_prot_path}")
     
@@ -218,6 +245,7 @@ def run_gprot_pipeline(cfg=None, exp_types=None):
     for index in indices:
         process_gprot_dataset(index, dataDF, cfg)
 
+    if cfg.get("gprot_pool_bridge"):
         # Run QC per expType output.
         #corr_paths = infer_corr_paths(cfg["meta_prot_csv"], cfg["meta_index"], out_dir)
 
@@ -250,31 +278,32 @@ def run_gprot_pipeline(cfg=None, exp_types=None):
             #print(f"[run] Wrote QC outputs for: {base}", flush=True)
             sp.succeed(f"{out_prefix} — QC outputs + heatmap ")
 
-    # Combined post-bridge outputs (After bridging)
-    with Halo(spinner="dots", color="cyan", text="[gprot] post-bridge outputs...") as sp:
-        run_post_bridge_outputs(corrDFs, cfg=cfg, pipeline="prot", prefix="gprot")
-        sp.succeed(f"post-bridge outputs | saved: {cfg['post_bridge_dir']}")
+    if cfg.get("gprot_pool_bridge"):
+        # Combined post-bridge outputs (After bridging)
+        with Halo(spinner="dots", color="cyan", text="[gprot] post-bridge outputs...") as sp:
+            run_post_bridge_outputs(corrDFs, cfg=cfg, pipeline="prot", prefix="gprot")
+            sp.succeed(f"post-bridge outputs | saved: {cfg['post_bridge_dir']}")
 
-    # Combined heatmap from post-bridge outputs (universal)
-    post_csv = pick_post_bridge_csv(cfg)
-    with Halo(spinner="dots", color="cyan", text="[gprot] generating combined heatmap...") as sp:
-        if post_csv:
-            combined_df = pd.read_csv(post_csv)
-            combined_mat = to_matrix(combined_df, ["Gene", "Accessions"])
-            out_png = os.path.join(
-                cfg.get("post_bridge_dir", os.path.join(out_dir, "after-bridging")),
-                f"{cfg.get('post_bridge_prefix', 'gProt')}_QC_heatmap_bridged.png",
-            )
-            qc_heatmap_post_bridge(
-                combined_mat.dropna(),
-                out_png=out_png,
-                top_n=cfg["qc_top_n"],
-                zscore=cfg["qc_zscore"],
-                title=f"{os.path.splitext(os.path.basename(post_csv))[0]} QC heatmap (combined)",
-            )
-            sp.succeed(f"combined heatmap | saved: {out_png}")
-        else:
-            sp.warn("skipping combined heatmap — no post-bridge CSV found")
+        # Combined heatmap from post-bridge outputs (universal)
+        post_csv = pick_post_bridge_csv(cfg)
+        with Halo(spinner="dots", color="cyan", text="[gprot] generating combined heatmap...") as sp:
+            if post_csv:
+                combined_df = pd.read_csv(post_csv)
+                combined_mat = to_matrix(combined_df, ["Gene", "Accessions"])
+                out_png = os.path.join(
+                    cfg.get("post_bridge_dir", os.path.join(out_dir, "after-bridging")),
+                    f"{cfg.get('post_bridge_prefix', 'gProt')}_QC_heatmap_bridged.png",
+                )
+                qc_heatmap_post_bridge(
+                    combined_mat.dropna(),
+                    out_png=out_png,
+                    top_n=cfg["qc_top_n"],
+                    zscore=cfg["qc_zscore"],
+                    title=f"{os.path.splitext(os.path.basename(post_csv))[0]} QC heatmap (combined)",
+                )
+                sp.succeed(f"combined heatmap | saved: {out_png}")
+            else:
+                sp.warn("skipping combined heatmap — no post-bridge CSV found")
 
     # sp.succeed("Done. saved:", out_dir,)
     print(f"\n[gprot] done — all written to:", out_dir, flush=True)

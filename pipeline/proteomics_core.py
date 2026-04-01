@@ -277,7 +277,31 @@ def run_post_bridge_outputs(corrDFs, cfg, keys=None, prefix=None, pipeline="prot
 
     return concatDict
 
+# QC HELPERS
+def qc_warn_no_row_change(step, before_count, after_count, context=""):
+    """Print a warning if a step does not change row count."""
+    if before_count == after_count:
+        prefix = f"{context} — " if context else ""
+        print(f"ERROR: QC {prefix}{step} did not change row count ({after_count}).")
 
+
+def qc_warn_no_value_change(step, before_df, after_df, context="", cols=None):
+    """Print a warning if a step does not change numeric values."""
+    prefix = f"{context} — " if context else ""
+    if cols is None:
+        common = before_df.columns.intersection(after_df.columns)
+    else:
+        common = [c for c in cols if c in before_df.columns and c in after_df.columns]
+
+    if len(common) == 0:
+        print(f"ERROR: QC {prefix}{step} skipped (no common columns).")
+        return
+
+    before_vals = before_df[common].apply(pd.to_numeric, errors="coerce").to_numpy()
+    after_vals = after_df[common].apply(pd.to_numeric, errors="coerce").to_numpy()
+
+    if np.array_equal(before_vals, after_vals) or np.allclose(before_vals, after_vals, equal_nan=True):
+        print(f"ERROR: QC {prefix}{step} did not change values.")
 
 # QC HEATMAP
 def qc_heatmap_post_bridge(df, out_png, top_n=300, zscore=True, title="QC heatmap (post pool-bridge)"):
@@ -345,6 +369,5 @@ def pick_post_bridge_csv(cfg):
         if os.path.exists(path):
             return path
     return None
-
 
 

@@ -15,7 +15,14 @@ from halo import Halo
 from config.utils import load_config
 from pipeline.proteomics_core import (
     PSM_filter,
-    nan_imputation
+    nan_imputation,
+    bridgeCenter_data,
+    run_post_bridge_outputs,
+    qc_heatmap_post_bridge,
+    pick_post_bridge_csv,
+    to_matrix,
+    qc_warn_no_row_change,
+    qc_warn_no_value_change,
 )
 
 
@@ -65,9 +72,12 @@ def phos_filter(df, exp_type, cfg):
     #print(f"      After phospho filter: {len(phosfilter)}")
     
     # Filter for pY if specified
-    if cfg.get("phos_filter_pY", True) and 'pY' in exp_type:
-        phosfilter = phosfilter[phosfilter['Modifications'].str.contains("Y", na=False)]
+    enrichment = cfg.get("phos_enrichment_filter")
+    if enrichment == "pY" and "pY" in exp_type:
+        phosfilter = phosfilter[phosfilter["Modifications"].str.contains("Y", na=False)]
         #print(f"      After pY filter: {len(phosfilter)}")
+    elif enrichment == "pSQTQ" and exp_type.endswith("pSQTQ"):
+        phosfilter = phosfilter[phosfilter["Sequence"].str.contains(r"(SQ|TQ)", regex=True, na=False)]
     
     # PhosphoRS probability filter
     a = pd.DataFrame(
@@ -605,6 +615,7 @@ def process_phos_dataset(index, dataDF, cfg):
         sp.text = f"  {out_prefix} — reading files"
         #print(f"    Reading PSMs: {os.path.basename(psms_path)}")
         psms = pd.read_csv(psms_path, sep="\t")
+        psm_start = len(psms)
         #print(f"    Reading MGF: {os.path.basename(mgf_path)}")
         mgf_dict = mgf.read(mgf_path)
         #print(f"    Reading library: {os.path.basename(lib_path)}")
@@ -624,14 +635,17 @@ def process_phos_dataset(index, dataDF, cfg):
         #print(f"    Filtering + imputation...")
         sp.text = f"  {out_prefix} — filtering..."
         PSMdf = nan_imputation(PSM_filter(psms, libs, cfg), mgf_dict, cfg)
+        qc_warn_no_row_change("PSM filtering+imputation", psm_start, len(PSMdf), context=out_prefix)
         #print(len(PSMdf))
         
         # Phospho-specific filtering
         PSMdf, psm_start, psm_end = phos_filter(PSMdf, index, cfg)
+        qc_warn_no_row_change("phospho filtering", psm_start, psm_end, context=out_prefix)
         
         # Summarize to phosphosite level with motifs
         sp.text = f"  {out_prefix} — motif mapping..."
         sumPSMdf = sum_psms_phos(PSMdf, pepts, mods, phos_site, out_prefix, cfg, out_dir=out_dir)
+        qc_warn_no_row_change("phosphosite summarization", psm_end, len(sumPSMdf), context=out_prefix)
         sumPSM[index] = sumPSMdf
         
         # Apply supernatant corrections
@@ -640,6 +654,8 @@ def process_phos_dataset(index, dataDF, cfg):
         for col in corrPhos.columns:
             if col in corrSum.columns:
                 corrPhos[col] = corrPhos[col] / corrSum[col][0]
+
+        qc_warn_no_value_change("correction factor (phospho)", sumPSMdf, corrPhos, context=out_prefix, cols=corrSum.columns)
         
         # Rename columns using library mapping
         for x in corrPhos.columns:
@@ -652,6 +668,20 @@ def process_phos_dataset(index, dataDF, cfg):
         sp.text = f"  {out_prefix} — saving"
         corr_phos_path = os.path.join(out_dir, f"{out_prefix}_phos_corr.csv")
         corrPhos.to_csv(corr_phos_path)
+
+        if not cfg.get("phos_do_bridge") and cfg.get("qc_heatmap_no_bridge", True):
+            id_cols = ["Gene", "Accessions", "Site"]
+            sample_cols = [c for c in corrPhos.columns if c not in id_cols]
+            qc_mat = corrPhos.set_index(id_cols)[sample_cols]
+            if qc_mat.shape[0] > 0 and qc_mat.shape[1] > 0:
+                out_png = os.path.join(out_dir, f"{out_prefix}_QC_heatmap_no_bridge.png")
+                qc_heatmap_post_bridge(
+                    qc_mat.dropna(),
+                    out_png=out_png,
+                    top_n=cfg["qc_top_n"],
+                    zscore=cfg["qc_zscore"],
+                    title=f"{out_prefix} QC heatmap (no bridge)",
+                )
         # print(f"      {index} — {psm_start} PSMs → {psm_end} after filters → {len(sumPSMdf)} sites")
         # print(f"Saved: {os.path.basename(corr_phos_path)}")
         #print(f"    ✓ Done: {index}")
@@ -675,13 +705,72 @@ def run_phos_pipeline(cfg=None, exp_types=None):
     
     for index in indices:
         process_phos_dataset(index, dataDF, cfg)
+
+    if cfg.get("phos_do_bridge"):
+        out_dir = cfg["out_dir"]
+        phos_prefix = cfg.get("phos_post_bridge_prefix", "phos")
+
+        for index in indices:
+            out_prefix = index.replace("_sup", "")
+            phos_corr_path = os.path.join(out_dir, f"{out_prefix}_phos_corr.csv")
+
+            with Halo(spinner="dots", color="cyan", text="generating combined QC heatmap...") as sp:
+                phos_corr = pd.read_csv(phos_corr_path)
+
+                # Convert to a feature x sample matrix.
+                id_cols = ["Gene", "Accessions", "Site"]
+                sample_cols = [c for c in phos_corr.columns if c not in id_cols]
+                phos_mat = phos_corr.set_index(id_cols)[sample_cols]
+
+                # Pool-bridge using regex; drops pool channels after normalization.
+                phos_brg = bridgeCenter_data(phos_mat, cfg["pool_regex"])
+
+                base = os.path.splitext(os.path.basename(phos_corr_path))[0]
+                phos_brg.to_csv(os.path.join(out_dir, f"{base}_post_pool_bridge.csv"))
+
+                # QC heatmap AFTER bridging
+                qc_heatmap_post_bridge(
+                    phos_brg.dropna(),
+                    out_png=os.path.join(out_dir, f"{base}_QC_heatmap_post_pool_bridge.png"),
+                    top_n=cfg["qc_top_n"],
+                    zscore=cfg["qc_zscore"],
+                    title=f"{base} QC heatmap (post pool-bridge)",
+                )
+                sp.succeed(f"{out_prefix} — QC outputs + heatmap ")
+
+        # Combined post-bridge outputs (After bridging)
+        with Halo(spinner="dots", color="cyan", text="[phos] post-bridge outputs...") as sp:
+            run_post_bridge_outputs(corrDFs, cfg=cfg, pipeline="phos", prefix=phos_prefix)
+            sp.succeed(f"post-bridge outputs | saved: {cfg['post_bridge_dir']}")
+
+        # Combined heatmap from post-bridge outputs (universal)
+        post_cfg = dict(cfg)
+        post_cfg["post_bridge_prefix"] = phos_prefix
+        post_csv = pick_post_bridge_csv(post_cfg)
+        with Halo(spinner="dots", color="cyan", text="[phos] generating combined heatmap...") as sp:
+            if post_csv:
+                combined_df = pd.read_csv(post_csv)
+                combined_mat = to_matrix(combined_df, ["Gene", "Accessions", "Site"])
+                out_png = os.path.join(
+                    cfg.get("post_bridge_dir", os.path.join(out_dir, "after-bridging")),
+                    f"{phos_prefix}_QC_heatmap_bridged.png",
+                )
+                qc_heatmap_post_bridge(
+                    combined_mat.dropna(),
+                    out_png=out_png,
+                    top_n=cfg["qc_top_n"],
+                    zscore=cfg["qc_zscore"],
+                    title=f"{os.path.splitext(os.path.basename(post_csv))[0]} QC heatmap (combined)",
+                )
+                sp.succeed(f"combined heatmap | saved: {out_png}")
+            else:
+                sp.warn("skipping combined heatmap — no post-bridge CSV found")
     
     print(f"\n[phos] done — all written to:", cfg["out_dir"])
 
 
-# ============================================================================
+
 # MAIN
-# ============================================================================
 
 def main():
     """Main entry point for testing."""

@@ -47,6 +47,10 @@ ions_score_min: 15
 # Only keep PSMs whose Modifications field contains this string
 require_mod_contains: "TMT"
 
+# gProt Sup correction: use only the top X% most abundant PSMs
+gprot_use_top_quantile: false   # true = filter, false = use all PSMs
+gprot_top_quantile: 0.75       # 0.75 = top 25%
+
 
 # --- Abundance / Channels ----------------------------------------------------
 # Text that identifies abundance columns in the PSM file
@@ -73,9 +77,12 @@ phos_ptmrs_threshold: 50
 # Regex pattern for PTM filtering in the Modifications column
 phos_mod_filter: "Phos"
 
-# Set to true to filter for phosphotyrosine (pY) experiments automatically
-phos_filter_pY: true
+# Enrichment-specific filter: "pY" or "pSQTQ" (leave blank to disable)
+phos_enrichment_filter: ""
 
+# Bridge toggles
+gprot_do_bridge: false
+phos_do_bridge: true
 
 # --- QC Heatmap --------------------------------------------------------------
 # Number of top variable proteins/sites to show in QC heatmap
