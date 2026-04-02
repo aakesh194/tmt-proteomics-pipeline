@@ -201,7 +201,6 @@ def process_runs(corrDFs, keys, cfg):
     for k in keys:
         brgA = bridgeCenter_data(corrDFs[k], cfg["pool_regex"])
         brg_corr[k + '_brgA'] = brgA
-        brg_corr[k + '_brgS'] = bridgeCenter_data(brgA, cfg["bridge_regex"])
 
     # Apply run corrections
     for k in keys:
@@ -222,7 +221,6 @@ def process_runs(corrDFs, keys, cfg):
     concatDict['raw_mc_DF_u'], concatDict['raw_mc_DF_n'] = concat_dfs(raw_mc)
     concatDict['raw_zscore_DF_u'], concatDict['raw_zscore_DF_n'] = concat_dfs(raw_zscore)
     concatDict['brgA_u'], concatDict['brgA_n'] = concat_dfs({key: value for key, value in brg_corr.items() if 'brgA' in key})
-    concatDict['brgS_u'], concatDict['brgS_n'] = concat_dfs({key: value for key, value in brg_corr.items() if 'brgS' in key})
     
     return mcB_run, concatDict
 
@@ -346,7 +344,7 @@ def infer_corr_paths(meta_csv, meta_index, out_dir):
     paths = []
     for exp_type in data_df.index:
         paths.append(
-            os.path.join(out_dir, f"{str(exp_type).replace('_sup','')}_gProt_corr.csv")
+            os.path.join(out_dir, f"{str(exp_type).replace('_sup','')}", "gprot", "06_corr_prot.csv")
         )
     return paths
 
@@ -361,13 +359,9 @@ def pick_post_bridge_csv(cfg):
     candidates = [
         f"{prefix}_brgA_n.csv",
         f"{prefix}_brgA_u.csv",
-        f"{prefix}_brgS_n.csv",
-        f"{prefix}_brgS_u.csv",
     ]
     for name in candidates:
         path = os.path.join(post_dir, name)
         if os.path.exists(path):
             return path
     return None
-
-

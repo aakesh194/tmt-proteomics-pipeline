@@ -64,7 +64,7 @@ min_fraction_channels_present: 0.33
 # --- Bridge / Pool Channels --------------------------------------------------
 # Regex pattern identifying pool/bridge channels (used for normalization)
 pool_regex: "BRG"
-bridge_regex: "B.*\\d+"
+#bridge_regex: "B.*\\d+"
 
 
 # --- Phospho-Specific Settings -----------------------------------------------
@@ -80,9 +80,12 @@ phos_mod_filter: "Phos"
 # Enrichment-specific filter: "pY" or "pSQTQ" (leave blank to disable)
 phos_enrichment_filter: ""
 
-# Bridge toggles
-gprot_do_bridge: false
-phos_do_bridge: true
+# Output label used for phos folders/filenames (e.g., "phos", "pST", "pY")
+phos_output_prefix: "phos"
+
+# Post-bridge toggle (multi-run combined outputs)
+gprot_post_bridge: true
+phos_post_bridge: true
 
 # --- QC Heatmap --------------------------------------------------------------
 # Number of top variable proteins/sites to show in QC heatmap

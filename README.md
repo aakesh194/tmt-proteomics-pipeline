@@ -1,13 +1,11 @@
 # tmt-proteomics-pipeline
 A command-line pipeline for processing raw DDA TMT mass spectrometry proteomics and phosphoproteomics data from Proteome Discoverer search results.
 
-**Author:** Aakesh Yoganathan — Tamir Lab, UNC Chapel Hill
-
 
 ## Setup
 **Clone the repository:**
 ```bash
-git clone https://github.com/aakesh194/tmt-proteomics-pipeline.git
+git clone https://github.com/tamirlab-unc/tmt-proteomics-pipeline
 cd tmt-proteomics-pipeline
 ```
 
@@ -18,6 +16,7 @@ conda activate omics
 conda install pip
 pip install -r requirements.txt
 ```
+_If you don’t have conda installed, install [Miniconda](https://docs.conda.io/projects/conda/en/latest/user-guide/install/index.html) (recommended) or use your own Python environment._
 
 **Add your data files:**
 - Raw files (PSMs, MGF, peptide groups, mods) → `data/raw-files/`
@@ -41,17 +40,14 @@ python run.py --help           # for more help
 
 ## Outputs
 
-All files are written to `outputs/`. After bridging outputs go to `outputs/after-bridging/`.
+See `outputs/README.md` for the current folder structure and file descriptions.
 
-| File | Description |
-|------|-------------|
-| `{exp}_gProt_corr.csv` | Corrected protein abundances |
-| `{exp}_pepts_corr.csv` | Corrected peptide abundances |
-| `{exp}_sup_Corrections.csv` | Supernatant correction factors |
-| `{exp}_gProt_corr_post_pool_bridge.csv` | Pool-bridge normalized protein abundances |
-| `{exp}_QC_heatmap_post_pool_bridge.png` | QC heatmap after pool-bridge normalization — top 300 most variable proteins, z-scored. |
-| `{exp}_phos_corr.csv` | Corrected phosphosite abundances |
-| `{exp}_sum_motif.csv` | Phosphosites with motif annotations |
-| `After bridging/` | Multi-run bridge-corrected combined outputs |
-| `After bridging/gProt_QC_heatmap_bridged.png` | Combined QC heatmap across all runs after multi-run bridge correction |
+
+<br>
+<br>
+
 ---
+
+**Aakesh Yoganathan**  
+Undergraduate Researcher — Tamir Lab, UNC Chapel Hill  
+CS + Statistics | [@aakesh194](https://github.com/aakesh194)

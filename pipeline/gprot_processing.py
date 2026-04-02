@@ -135,6 +135,8 @@ def process_gprot_dataset(index, dataDF, cfg):
     out_prefix = index.replace("_sup", "")
     if out_dir:
         os.makedirs(out_dir, exist_ok=True)
+    run_dir = os.path.join(out_dir, out_prefix, "gprot")
+    os.makedirs(run_dir, exist_ok=True)
     
     # Build file paths
     psms_path = os.path.join(raw_dir, dataDF.loc[index, cfg["meta_cols"]["psms"]])
@@ -157,19 +159,25 @@ def process_gprot_dataset(index, dataDF, cfg):
 
         # Filter and impute PSMs
         sp.text = f"  {out_prefix} — filtering..."
-        PSMdf = nan_imputation(PSM_filter(psms, libs, cfg), mgf_dict, cfg)
+        psm_filtered = PSM_filter(psms, libs, cfg)
+        psm_filtered.to_csv(os.path.join(run_dir, "01_psm_filtered.csv"), index=False)
+        PSMdf = nan_imputation(psm_filtered, mgf_dict, cfg)
+        PSMdf.to_csv(os.path.join(run_dir, "02_psm_imputed.csv"), index=False)
         qc_warn_no_row_change("PSM filtering+imputation", psm_start, len(PSMdf), context=out_prefix)
 
         # Calculate corrections
         sp.text = f"  {out_prefix} — corrections..."
         peps, corrSum = sup_Corrections(PSMdf, cfg)
+        peps.to_csv(os.path.join(run_dir, "03_peps.csv"))
+        
         corrDict[index] = corrSum
         sumPSMdf = sum_peps(PSMdf)
+        sumPSMdf.to_csv(os.path.join(run_dir, "04_sum_peps.csv"))
         qc_warn_no_row_change("peptide summarization", len(PSMdf), len(sumPSMdf), context=out_prefix)
         sumPSM[index] = sumPSMdf
 
         # Save correction factors
-        corr_sum_path = os.path.join(out_dir, f"{out_prefix}_sup_Corrections.csv") if out_dir else f"{out_prefix}_sup_Corrections.csv"
+        corr_sum_path = os.path.join(run_dir, "05_corr_factors.csv")
         corrSum.to_csv(corr_sum_path)
 
         # Apply corrections
@@ -186,14 +194,14 @@ def process_gprot_dataset(index, dataDF, cfg):
         qc_warn_no_value_change("correction factor (proteins)", sumPSMdf, corrProt, context=out_prefix, cols=corrSum.columns)
         qc_warn_no_value_change("correction factor (peptides)", peps, corrPept, context=out_prefix, cols=corrSum.columns)
 
-        # Rename columns using library mapping
-        for x in corrProt.columns:
-            if x in libs.keys():
-                corrProt = corrProt.rename(columns=libs)
-                
-        for y in corrPept.columns:
-            if y in libs.keys():
-                corrPept = corrPept.rename(columns=libs)
+        # Rename columns using library mapping (exclude id columns)
+        id_cols = {"Gene", "Accessions"}
+        rename_map = {k: v for k, v in libs.items() if k in corrProt.columns and k not in id_cols}
+        if rename_map:
+            corrProt = corrProt.rename(columns=rename_map)
+        rename_map = {k: v for k, v in libs.items() if k in corrPept.columns and k not in id_cols}
+        if rename_map:
+            corrPept = corrPept.rename(columns=rename_map)
         
         # Store results
         corrDFs[index] = corrProt
@@ -201,24 +209,10 @@ def process_gprot_dataset(index, dataDF, cfg):
         
         # Save outputs
         sp.text = f"  {out_prefix} — saving..."
-        corr_prot_path = os.path.join(out_dir, f"{out_prefix}_gProt_corr.csv")
-        corr_pept_path = os.path.join(out_dir, f"{out_prefix}_pepts_corr.csv")
+        corr_prot_path = os.path.join(run_dir, "06_corr_prot.csv")
+        corr_pept_path = os.path.join(run_dir, "06_corr_pept.csv")
         corrProt.to_csv(corr_prot_path)
         corrPept.to_csv(corr_pept_path)
-
-        if not cfg.get("gprot_pool_bridge") and cfg.get("qc_heatmap_no_bridge", True):
-            id_cols = ["Gene", "Accessions"]
-            sample_cols = [c for c in corrProt.columns if c not in id_cols]
-            qc_mat = corrProt.set_index(id_cols)[sample_cols]
-            if qc_mat.shape[0] > 0 and qc_mat.shape[1] > 0:
-                out_png = os.path.join(out_dir, f"{out_prefix}_QC_heatmap_no_bridge.png")
-                qc_heatmap_post_bridge(
-                    qc_mat.dropna(),
-                    out_png=out_png,
-                    top_n=cfg["qc_top_n"],
-                    zscore=cfg["qc_zscore"],
-                    title=f"{out_prefix} QC heatmap (no bridge)",
-                )
 
         sp.succeed(f"  {out_prefix} — proteins: {len(sumPSMdf)} | saved: {corr_prot_path}")
     
@@ -233,6 +227,7 @@ def run_gprot_pipeline(cfg=None, exp_types=None):
         cfg = load_config()
 
     _reset_run_state()
+    do_post_bridge = cfg.get("gprot_post_bridge", cfg.get("gprot_do_bridge", False))
     print(f"\n[gprot]")
     out_dir = cfg["out_dir"]
     os.makedirs(out_dir, exist_ok=True)
@@ -245,14 +240,13 @@ def run_gprot_pipeline(cfg=None, exp_types=None):
     for index in indices:
         process_gprot_dataset(index, dataDF, cfg)
 
-    if cfg.get("gprot_pool_bridge"):
-        # Run QC per expType output.
-        #corr_paths = infer_corr_paths(cfg["meta_prot_csv"], cfg["meta_index"], out_dir)
-
+    # Run QC per expType output.
+    #corr_paths = infer_corr_paths(cfg["meta_prot_csv"], cfg["meta_index"], out_dir)
+    for index in indices:
         out_prefix = index.replace("_sup", "")
-        gprot_corr_path = os.path.join(out_dir, f"{out_prefix}_gProt_corr.csv")
+        run_dir = os.path.join(out_dir, out_prefix, "gprot")
+        gprot_corr_path = os.path.join(run_dir, "06_corr_prot.csv")
 
-        #for gprot_corr_path in corr_paths:
         with Halo(spinner="dots", color="cyan", text="generating combined QC heatmap...") as sp:
             gprot_corr = pd.read_csv(gprot_corr_path)
 
@@ -264,34 +258,35 @@ def run_gprot_pipeline(cfg=None, exp_types=None):
             # Pool-bridge using regex; drops pool channels after normalization.
             gprot_brg = bridgeCenter_data(gprot_mat, cfg["pool_regex"])
 
-            base = os.path.splitext(os.path.basename(gprot_corr_path))[0]
-            gprot_brg.to_csv(os.path.join(out_dir, f"{base}_post_pool_bridge.csv"))
+            gprot_brg.to_csv(os.path.join(run_dir, "07_post_pool_bridge.csv"))
 
             # QC heatmap AFTER bridging
             qc_heatmap_post_bridge(
                 gprot_brg.dropna(),
-                out_png=os.path.join(out_dir, f"{base}_QC_heatmap_post_pool_bridge.png"),
+                out_png=os.path.join(run_dir, "07_QC_heatmap_post_pool_bridge.png"),
                 top_n=cfg["qc_top_n"],
                 zscore=cfg["qc_zscore"],
-                title=f"{base} QC heatmap (post pool-bridge)",
+                title=f"{out_prefix} QC heatmap (post pool-bridge)",
             )
             #print(f"[run] Wrote QC outputs for: {base}", flush=True)
             sp.succeed(f"{out_prefix} — QC outputs + heatmap ")
 
-    if cfg.get("gprot_pool_bridge"):
+    if do_post_bridge:
         # Combined post-bridge outputs (After bridging)
+        post_cfg = dict(cfg)
+        post_cfg["post_bridge_dir"] = os.path.join(out_dir, "after-bridging", "gprot")
         with Halo(spinner="dots", color="cyan", text="[gprot] post-bridge outputs...") as sp:
-            run_post_bridge_outputs(corrDFs, cfg=cfg, pipeline="prot", prefix="gprot")
-            sp.succeed(f"post-bridge outputs | saved: {cfg['post_bridge_dir']}")
+            run_post_bridge_outputs(corrDFs, cfg=post_cfg, pipeline="prot", prefix="gprot")
+            sp.succeed(f"post-bridge outputs | saved: {post_cfg['post_bridge_dir']}")
 
         # Combined heatmap from post-bridge outputs (universal)
-        post_csv = pick_post_bridge_csv(cfg)
+        post_csv = pick_post_bridge_csv(post_cfg)
         with Halo(spinner="dots", color="cyan", text="[gprot] generating combined heatmap...") as sp:
             if post_csv:
                 combined_df = pd.read_csv(post_csv)
                 combined_mat = to_matrix(combined_df, ["Gene", "Accessions"])
                 out_png = os.path.join(
-                    cfg.get("post_bridge_dir", os.path.join(out_dir, "after-bridging")),
+                    post_cfg.get("post_bridge_dir", os.path.join(out_dir, "after-bridging", "gprot")),
                     f"{cfg.get('post_bridge_prefix', 'gProt')}_QC_heatmap_bridged.png",
                 )
                 qc_heatmap_post_bridge(

@@ -14,10 +14,8 @@ __pycache__/
 # outputs 
 outputs/
 
-# data
-data/raw-files/*
-data/library-files/*
-data/*.csv
-
+# data (keep folders only)
+data/**
+!data/.gitkeep
 !data/raw-files/.gitkeep
 !data/library-files/.gitkeep
