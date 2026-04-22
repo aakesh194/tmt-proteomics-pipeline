@@ -46,8 +46,6 @@ Multi-run bridge-corrected combined outputs. Only generated when processing mult
 | `{pipeline}_runCorr_DF_n.csv` | Run-corrected, no missing values |
 | `{pipeline}_brgA_u.csv` | Bridge A corrected, all sites |
 | `{pipeline}_brgA_n.csv` | Bridge A corrected, no missing values |
-| `{pipeline}_brgS_u.csv` | Bridge S corrected, all sites |
-| `{pipeline}_brgS_n.csv` | Bridge S corrected, no missing values |
 | `{pipeline}_run_corr_mc_*.csv` | Mean-centered run-corrected |
 | `{pipeline}_run_corr_zs_*.csv` | Z-scored run-corrected |
 | `{pipeline}_raw_mc_DF_*.csv` | Raw mean-centered |

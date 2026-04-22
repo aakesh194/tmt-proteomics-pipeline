@@ -444,6 +444,15 @@ def process_phos_dataset(index, dataDF, cfg):
 
         sp.succeed(f"{out_prefix} — {psm_start} PSMs → {psm_end} after filters → {len(sumPSMdf)} sites | saved: {corr_phos_path}")
 
+        return {
+            "experiment": out_prefix,
+            "psms_raw": psm_start,
+            "psms_after_filter": psm_end,
+            "psm_retention_pct": round(psm_end / psm_start * 100, 1) if psm_start else 0,
+            "phosphosites": len(sumPSMdf),
+            "tmt_channels": len([c for c in corrPhos.columns if c not in {"Gene", "Accessions", "Site"}]),
+        }
+
 
 # PIPELINE EXECUTION
 def run_phos_pipeline(cfg=None, exp_types=None):
@@ -461,8 +470,10 @@ def run_phos_pipeline(cfg=None, exp_types=None):
     
     #print(f"  Found {len(indices)} dataset(s) to process")
     
+    stats = {}
     for index in indices:
-        process_phos_dataset(index, dataDF, cfg)
+        result = process_phos_dataset(index, dataDF, cfg)
+        stats[index] = result
 
     out_dir = cfg["out_dir"]
     phos_prefix = cfg.get("phos_post_bridge_prefix", "phos")
@@ -526,6 +537,7 @@ def run_phos_pipeline(cfg=None, exp_types=None):
                 sp.warn("skipping combined heatmap — no post-bridge CSV found")
     
     print(f"\n[phos] done — all written to:", cfg["out_dir"])
+    return stats
 
 
 

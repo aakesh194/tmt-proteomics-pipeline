@@ -50,4 +50,4 @@ See `outputs/README.md` for the current folder structure and file descriptions.
 
 **Aakesh Yoganathan**  
 Undergraduate Researcher — Tamir Lab, UNC Chapel Hill  
-CS + Statistics | [@aakesh194](https://github.com/aakesh194)
+[@aakesh194](https://github.com/aakesh194)

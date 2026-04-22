@@ -143,7 +143,6 @@ def process_gprot_dataset(index, dataDF, cfg):
     mgf_path = os.path.join(raw_dir, dataDF.loc[index, cfg["meta_cols"]["mgf"]])
     lib_path = os.path.join(lib_dir, dataDF.loc[index, cfg["meta_cols"]["library"]])
     
-
     
     with Halo(spinner="dots", color="cyan") as sp:
         # Load input files
@@ -215,6 +214,16 @@ def process_gprot_dataset(index, dataDF, cfg):
         corrPept.to_csv(corr_pept_path)
 
         sp.succeed(f"  {out_prefix} — proteins: {len(sumPSMdf)} | saved: {corr_prot_path}")
+
+        return {
+            "experiment": out_prefix,
+            "psms_raw": psm_start,
+            "psms_after_filter": len(PSMdf),
+            "psm_retention_pct": round(len(PSMdf) / psm_start * 100, 1) if psm_start else 0,
+            "proteins": len(sumPSMdf),
+            "peptides": len(peps),
+            "tmt_channels": len([c for c in corrProt.columns if c not in {"Gene", "Accessions"}]),
+        }
     
     # tqdm.write(f"\n[gprot] {out_prefix}")
     # tqdm.write(f"        Proteins: {len(sumPSMdf)} | Saved: {corr_prot_path}")
@@ -237,8 +246,10 @@ def run_gprot_pipeline(cfg=None, exp_types=None):
     
     #print(f"[gprot] Found {len(indices)} dataset(s) to process")
     
+    stats = {}
     for index in indices:
-        process_gprot_dataset(index, dataDF, cfg)
+        result = process_gprot_dataset(index, dataDF, cfg)
+        stats[index] = result
 
     # Run QC per expType output.
     #corr_paths = infer_corr_paths(cfg["meta_prot_csv"], cfg["meta_index"], out_dir)
@@ -302,6 +313,7 @@ def run_gprot_pipeline(cfg=None, exp_types=None):
 
     # sp.succeed("Done. saved:", out_dir,)
     print(f"\n[gprot] done — all written to:", out_dir, flush=True)
+    return stats
 
 
 def main():
