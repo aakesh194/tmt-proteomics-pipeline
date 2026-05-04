@@ -131,8 +131,15 @@ def process_gprot_dataset(index, dataDF, cfg):
     raw_dir = cfg.get("raw_dir", "")
     out_dir = cfg.get("out_dir", "")
     lib_dir = cfg.get("lib_dir", "")
+    sup_corr_value = None
+    try:
+        sup_col = cfg.get("meta_cols", {}).get("sup_corr", "sup_corr")
+        if sup_col in dataDF.columns:
+            sup_corr_value = dataDF.loc[index, sup_col]
+    except Exception:
+        sup_corr_value = None
     
-    out_prefix = index.replace("_sup", "")
+    out_prefix = str(index)
     if out_dir:
         os.makedirs(out_dir, exist_ok=True)
     run_dir = os.path.join(out_dir, out_prefix, "gprot")
@@ -177,7 +184,17 @@ def process_gprot_dataset(index, dataDF, cfg):
 
         # Save correction factors
         corr_sum_path = os.path.join(run_dir, "05_corr_factors.csv")
-        corrSum.to_csv(corr_sum_path)
+        corrSum.to_csv(corr_sum_path, index=False)
+
+        # Optional convenience: also write correction factors to the filename referenced
+        # by `sup_corr` in metadata (typically used by the phos pipeline).
+        if sup_corr_value is not None:
+            alias = str(sup_corr_value).strip()
+            if alias and alias.lower() not in {"nan", "none"}:
+                alias_path = alias if os.path.isabs(alias) else os.path.join(out_dir, alias)
+                dir_to_create = os.path.dirname(alias_path) if os.path.dirname(alias_path) else out_dir
+                os.makedirs(dir_to_create, exist_ok=True)
+                corrSum.to_csv(alias_path, index=False)
 
         # Apply corrections
         corrProt = sumPSMdf.copy()
@@ -254,7 +271,7 @@ def run_gprot_pipeline(cfg=None, exp_types=None):
     # Run QC per expType output.
     #corr_paths = infer_corr_paths(cfg["meta_prot_csv"], cfg["meta_index"], out_dir)
     for index in indices:
-        out_prefix = index.replace("_sup", "")
+        out_prefix = str(index)
         run_dir = os.path.join(out_dir, out_prefix, "gprot")
         gprot_corr_path = os.path.join(run_dir, "06_corr_prot.csv")
 

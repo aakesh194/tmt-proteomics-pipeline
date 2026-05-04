@@ -21,3 +21,6 @@ data/**
 !data/library-files/.gitkeep
 
 run_log.json
+__pycache__/
+*.pyc
+*.pyo

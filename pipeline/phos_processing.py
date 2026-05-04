@@ -40,6 +40,121 @@ def _reset_run_state():
     corrDFs.clear()
     libsDict.clear()
 
+def _read_phosphositeplus_csv(path: str, cfg: dict) -> pd.DataFrame:
+    """
+    Read a PhosphoSitePlus motif CSV while tolerating occasional junk/metadata lines
+    *before* the real header row (common in some PSP downloads/exports).
+    """
+    accession_col = cfg.get("phos_site_accession_col", "Accession")
+    site_col = cfg.get("phos_site_site_col", "Site")
+    motif_col = cfg.get("phos_site_motif_col", "Motif")
+    required = {accession_col, site_col, motif_col}
+
+    header_row = 0
+    try:
+        with open(path, "r", encoding="utf-8", errors="replace") as fh:
+            for i, line in enumerate(fh):
+                if i > 200:
+                    break
+                # Strip BOM and whitespace
+                raw = line.lstrip("\ufeff").strip()
+                if not raw:
+                    continue
+                cols = [c.strip().strip('"') for c in raw.split(",")]
+                if required.issubset(set(cols)):
+                    header_row = i
+                    break
+    except OSError:
+        header_row = 0
+
+    return pd.read_csv(path, sep=",", skiprows=header_row)
+
+def _resolve_sup_corr_path(sup_corr_value, out_dir: str, out_prefix: str) -> str:
+    """
+    Resolve the correction-factor CSV path for phos runs.
+
+    Priority:
+    1) Use the metadata-provided path under `out_dir` (or absolute path as-is).
+    2) If missing, try `outputs/<gprot-exp>/gprot/05_corr_factors.csv` heuristics.
+    3) If still missing, search `out_dir` for `*/gprot/05_corr_factors.csv` and pick a best match.
+    """
+    val = "" if sup_corr_value is None else str(sup_corr_value).strip()
+    if val.lower() in {"", "nan", "none"}:
+        val = ""
+
+    candidates = []
+    if val:
+        candidates.append(val if os.path.isabs(val) else os.path.join(out_dir, val))
+
+    # If metadata provides something like "<BASE>_sup_Corrections.csv", prefer "<BASE>/gprot/05_corr_factors.csv".
+    if val.endswith("_sup_Corrections.csv"):
+        base = os.path.basename(val).replace("_sup_Corrections.csv", "")
+        candidates.append(os.path.join(out_dir, base, "gprot", "05_corr_factors.csv"))
+
+    # Common expected location when gProt already ran for the same sample prefix.
+    # Your folder structure is typically:
+    #   outputs/<base>_dda/gprot/05_corr_factors.csv
+    #   outputs/<base>_pst_dda/gphos/...
+    prefix = str(out_prefix)
+    prefix_l = prefix.lower()
+    transforms = {prefix}
+
+    # Strip common phospho markers to find the gProt base folder
+    for marker in ("_pst", "_psty", "_py", "_phos", "_gphos"):
+        if marker in prefix_l:
+            transforms.add(prefix_l.replace(marker, ""))
+
+    # Also try collapsing double-underscores caused by removals
+    normalized = set()
+    for t in transforms:
+        tt = str(t).replace("__", "_").strip("_")
+        normalized.add(tt)
+        normalized.add(tt.lower())
+        normalized.add(tt.upper())
+    transforms = normalized
+
+    for t in transforms:
+        candidates.append(os.path.join(out_dir, t, "gprot", "05_corr_factors.csv"))
+
+    # If metadata is just the filename, try finding it under a gprot folder for this experiment base.
+    if val and os.path.basename(val) == "05_corr_factors.csv":
+        for t in transforms:
+            candidates.append(os.path.join(out_dir, t, "gprot", val))
+
+    for p in candidates:
+        if p and os.path.exists(p):
+            return p
+
+    # Last resort: search outputs for any gprot correction factors.
+    matches = []
+    if out_dir and os.path.isdir(out_dir):
+        for root, dirs, files in os.walk(out_dir):
+            # light pruning: don't descend into very large common folders
+            dirs[:] = [d for d in dirs if d not in {".git", "__pycache__"}]
+            if os.path.basename(root) == "gprot" and "05_corr_factors.csv" in files:
+                matches.append(os.path.join(root, "05_corr_factors.csv"))
+
+    if len(matches) == 1:
+        return matches[0]
+
+    if matches:
+        # Prefer best token overlap with the current experiment name
+        tokens = [t for t in str(out_prefix).split("_") if t]
+        def score(path: str) -> int:
+            p = path.lower()
+            return sum(1 for t in tokens if t.lower() in p)
+        matches.sort(key=score, reverse=True)
+        return matches[0]
+
+    tried = [p for p in candidates if p]
+    raise FileNotFoundError(
+        "Could not locate sup correction factors file.\n"
+        f"Tried: {tried}\n"
+        f"Also searched under out_dir='{out_dir}' for '*/gprot/05_corr_factors.csv' and found none.\n"
+        "Fix by either (a) running gProt first, and/or (b) setting the `sup_corr` column in your phos metadata CSV "
+        "to the correct path (relative to out_dir) of the gProt `05_corr_factors.csv`."
+    )
+
 
 
 # PHOS-SPECIFIC FUNCTIONS
@@ -349,7 +464,7 @@ def process_phos_dataset(index, dataDF, cfg):
     lib_dir = cfg.get("lib_dir", "")
     out_label = cfg.get("phos_output_prefix", "phos")
     
-    out_prefix = index.replace("_sup", "")
+    out_prefix = str(index)
     if out_dir:
         os.makedirs(out_dir, exist_ok=True)
     run_dir = os.path.join(out_dir, out_prefix, out_label)
@@ -361,7 +476,7 @@ def process_phos_dataset(index, dataDF, cfg):
     lib_path = os.path.join(lib_dir, dataDF.loc[index, cfg["meta_cols"]["library"]])
     pepts_path = os.path.join(raw_dir, dataDF.loc[index, cfg["meta_cols"]["pepts"]])
     mods_path = os.path.join(raw_dir, dataDF.loc[index, cfg["meta_cols"]["mods"]])
-    sup_corr_path = os.path.join(out_dir, dataDF.loc[index, cfg["meta_cols"]["sup_corr"]])
+    sup_corr_value = dataDF.loc[index, cfg["meta_cols"]["sup_corr"]]
 
 
     phos_site_path = cfg.get("phos_site_csv", "Phosphosite Motifs_M.csv")
@@ -381,15 +496,10 @@ def process_phos_dataset(index, dataDF, cfg):
         pepts = pd.read_csv(pepts_path, sep="\t")
         #print(f"    Reading mods: {os.path.basename(mods_path)}")
         mods = pd.read_csv(mods_path, sep='\t')
-        #print(f"    Reading sup corrections: {sup_corr_path}")
-        if not os.path.exists(sup_corr_path):
-            sup_name = os.path.basename(sup_corr_path)
-            base = sup_name.replace("_sup_Corrections.csv", "").replace(".csv", "")
-            fallback = os.path.join(out_dir, base, "gprot", "05_corr_factors.csv")
-            sup_corr_path = fallback
+        sup_corr_path = _resolve_sup_corr_path(sup_corr_value, out_dir, out_prefix)
         corrSum = pd.read_csv(sup_corr_path)
         #print(f"    Reading PhosphoSitePlus: {os.path.basename(phos_site_path)}")
-        phos_site = pd.read_csv(phos_site_path, sep=',')
+        phos_site = _read_phosphositeplus_csv(phos_site_path, cfg)
         
         libsDict[index] = libs
         
@@ -479,7 +589,7 @@ def run_phos_pipeline(cfg=None, exp_types=None):
     phos_prefix = cfg.get("phos_post_bridge_prefix", "phos")
 
     for index in indices:
-        out_prefix = index.replace("_sup", "")
+        out_prefix = str(index)
         run_dir = os.path.join(out_dir, out_prefix, out_label)
         phos_corr_path = os.path.join(run_dir, "06_corr_phos.csv")
 

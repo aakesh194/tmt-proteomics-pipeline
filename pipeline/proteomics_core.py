@@ -344,7 +344,7 @@ def infer_corr_paths(meta_csv, meta_index, out_dir):
     paths = []
     for exp_type in data_df.index:
         paths.append(
-            os.path.join(out_dir, f"{str(exp_type).replace('_sup','')}", "gprot", "06_corr_prot.csv")
+            os.path.join(out_dir, f"{str(exp_type)}", "gprot", "06_corr_prot.csv")
         )
     return paths
 

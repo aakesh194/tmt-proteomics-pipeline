@@ -12,6 +12,13 @@ meta_phos_csv: "data/metaFiles_gphos_BHA_2.csv"
 # PhosphoSitePlus motif reference file
 phos_site_csv: "data/Phosphosite Motifs_M.csv"
 
+# Column names inside `phos_site_csv` used for motif mapping
+# (Default matches `data/Phosphosite Motifs_M.csv`. For other PSP exports you may need to
+# change these, e.g. `Accession` stays the same but `MOD_RSD` -> Site and `SITE_7_AA` -> Motif.)
+phos_site_accession_col: "Accession"
+phos_site_site_col: "Site"
+phos_site_motif_col: "Motif"
+
 # Column in the metadata CSV that identifies each experiment
 meta_index: "expType"
 
