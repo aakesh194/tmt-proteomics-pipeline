@@ -23,6 +23,7 @@ from pipeline.proteomics_core import (
     to_matrix,
     qc_warn_no_row_change,
     qc_warn_no_value_change,
+    infer_project_name,
 )
 
 
@@ -527,7 +528,9 @@ def process_phos_dataset(index, dataDF, cfg):
         
         # Apply supernatant corrections
         sp.text = f"  {out_prefix} — corrections"
-        corrSum.to_csv(os.path.join(run_dir, "05_corr_factors.csv"), index=False)
+        # Save a copy of the correction factors used for this run (named after metadata `sup_corr`)
+        corr_copy_name = os.path.basename(str(sup_corr_path)) if sup_corr_path else "corr_factors.csv"
+        corrSum.to_csv(os.path.join(run_dir, corr_copy_name), index=False)
         corrPhos = sumPSMdf.copy()
         for col in corrPhos.columns:
             if col in corrSum.columns:
@@ -586,7 +589,8 @@ def run_phos_pipeline(cfg=None, exp_types=None):
         stats[index] = result
 
     out_dir = cfg["out_dir"]
-    phos_prefix = cfg.get("phos_post_bridge_prefix", "phos")
+    project = infer_project_name(list(indices))
+    phos_prefix = f"phos_{project}"
 
     for index in indices:
         out_prefix = str(index)

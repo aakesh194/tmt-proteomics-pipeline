@@ -58,6 +58,11 @@ require_mod_contains: "TMT"
 gprot_use_top_quantile: false   # true = filter, false = use all PSMs
 gprot_top_quantile: 0.75       # 0.75 = top 25%
 
+# gProt Sup correction: use only the X% of PSMs with the least variance
+# (coefficient of variation across abundance channels).
+gprot_use_low_variance: false   # true = filter, false = use all PSMs
+gprot_low_variance_quantile: 0.25  # 0.25 = keep bottom 25% CV (most stable PSMs)
+
 
 # --- Abundance / Channels ----------------------------------------------------
 # Text that identifies abundance columns in the PSM file

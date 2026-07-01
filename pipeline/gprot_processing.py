@@ -63,10 +63,18 @@ def sup_Corrections(df, cfg):
     
     use_top = cfg.get("gprot_use_top_quantile", False)
     q = cfg.get("gprot_top_quantile", 0.75)
+    use_low_var = cfg.get("gprot_use_low_variance", False)
+    var_q = cfg.get("gprot_low_variance_quantile", 0.25)
 
     base_df = df
     if use_top:
-        base_df = df[df["AbundAve"] >= df["AbundAve"].quantile(q)]
+        base_df = base_df[base_df["AbundAve"] >= base_df["AbundAve"].quantile(q)]
+    if use_low_var:
+        abund_cols = base_df.columns[base_df.columns.str.contains(cfg["abundance_contains"])]
+        # CV across abundance channels; scale-independent stability metric
+        mean_ab = base_df[abund_cols].mean(axis=1)
+        cv = base_df[abund_cols].std(axis=1) / mean_ab.replace(0, np.nan)
+        base_df = base_df[cv <= cv.quantile(var_q)]
 
     psmsSum = base_df.set_index(["Gene", "Master Protein Accessions", "Sequence"])
 
@@ -182,19 +190,19 @@ def process_gprot_dataset(index, dataDF, cfg):
         qc_warn_no_row_change("peptide summarization", len(PSMdf), len(sumPSMdf), context=out_prefix)
         sumPSM[index] = sumPSMdf
 
-        # Save correction factors
-        corr_sum_path = os.path.join(run_dir, "05_corr_factors.csv")
-        corrSum.to_csv(corr_sum_path, index=False)
-
-        # Optional convenience: also write correction factors to the filename referenced
-        # by `sup_corr` in metadata (typically used by the phos pipeline).
-        if sup_corr_value is not None:
-            alias = str(sup_corr_value).strip()
-            if alias and alias.lower() not in {"nan", "none"}:
-                alias_path = alias if os.path.isabs(alias) else os.path.join(out_dir, alias)
-                dir_to_create = os.path.dirname(alias_path) if os.path.dirname(alias_path) else out_dir
-                os.makedirs(dir_to_create, exist_ok=True)
-                corrSum.to_csv(alias_path, index=False)
+        # Save correction factors using the exact filename in metadata `sup_corr`.
+        # This is what the phos pipeline will read.
+        alias = str(sup_corr_value).strip() if sup_corr_value is not None else ""
+        if not alias or alias.lower() in {"nan", "none"}:
+            raise ValueError(
+                f"Missing `sup_corr` value for expType '{index}' in gProt metadata. "
+                "Set the `sup_corr` column to a filename (relative to out_dir) where "
+                "correction factors should be written."
+            )
+        alias_path = alias if os.path.isabs(alias) else os.path.join(out_dir, alias)
+        dir_to_create = os.path.dirname(alias_path) if os.path.dirname(alias_path) else out_dir
+        os.makedirs(dir_to_create, exist_ok=True)
+        corrSum.to_csv(alias_path, index=False)
 
         # Apply corrections
         corrProt = sumPSMdf.copy()
@@ -303,8 +311,11 @@ def run_gprot_pipeline(cfg=None, exp_types=None):
         # Combined post-bridge outputs (After bridging)
         post_cfg = dict(cfg)
         post_cfg["post_bridge_dir"] = os.path.join(out_dir, "after-bridging", "gprot")
+        project = infer_project_name(list(indices))
+        gprot_prefix = f"gprot_{project}"
+        post_cfg["post_bridge_prefix"] = gprot_prefix
         with Halo(spinner="dots", color="cyan", text="[gprot] post-bridge outputs...") as sp:
-            run_post_bridge_outputs(corrDFs, cfg=post_cfg, pipeline="prot", prefix="gprot")
+            run_post_bridge_outputs(corrDFs, cfg=post_cfg, pipeline="prot", prefix=gprot_prefix)
             sp.succeed(f"post-bridge outputs | saved: {post_cfg['post_bridge_dir']}")
 
         # Combined heatmap from post-bridge outputs (universal)
@@ -315,7 +326,7 @@ def run_gprot_pipeline(cfg=None, exp_types=None):
                 combined_mat = to_matrix(combined_df, ["Gene", "Accessions"])
                 out_png = os.path.join(
                     post_cfg.get("post_bridge_dir", os.path.join(out_dir, "after-bridging", "gprot")),
-                    f"{cfg.get('post_bridge_prefix', 'gProt')}_QC_heatmap_bridged.png",
+                    f"{gprot_prefix}_QC_heatmap_bridged.png",
                 )
                 qc_heatmap_post_bridge(
                     combined_mat.dropna(),

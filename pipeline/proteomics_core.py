@@ -365,3 +365,34 @@ def pick_post_bridge_csv(cfg):
         if os.path.exists(path):
             return path
     return None
+
+def infer_project_name(run_keys):
+    """
+    Infer a short project label from a list of expType strings.
+
+    Examples:
+      - ["BHA15_DDA_sup", "BHA16_DDA_sup"] -> "BHA"
+      - ["20260423_GST_EI_TMT_Set1", ...]  -> "GST"
+    """
+    import re
+
+    if not run_keys:
+        return "PROJECT"
+
+    labels = []
+    for k in run_keys:
+        s = str(k)
+        m = re.match(r"^([A-Za-z]+)\d", s)
+        if m:
+            labels.append(m.group(1).upper())
+            continue
+        if re.match(r"^\d{6,8}_", s):
+            parts = s.split("_")
+            if len(parts) >= 2:
+                labels.append(parts[1].upper())
+                continue
+        labels.append(s.split("_")[0].upper())
+
+    # If all inferred labels agree, return that; otherwise return a generic label.
+    uniq = sorted(set(labels))
+    return uniq[0] if len(uniq) == 1 else "MIXED"
