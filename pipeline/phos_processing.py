@@ -189,8 +189,12 @@ def phos_filter(df, exp_type, cfg):
     
     # Filter for pY if specified
     enrichment = cfg.get("phos_enrichment_filter")
+
     if enrichment == "pY" and "pY" in exp_type:
-        phosfilter = phosfilter[phosfilter["Modifications"].str.contains("Y", na=False)]
+        phosfilter = phosfilter[
+            phosfilter['PhosphoRS Best Site Probabilities']
+            .str.contains(r'\bY\d', regex=True, na=False)
+        ]
         #print(f"      After pY filter: {len(phosfilter)}")
     elif enrichment == "pSQTQ" and exp_type.endswith("pSQTQ"):
         phosfilter = phosfilter[phosfilter["Sequence"].str.contains(r"(SQ|TQ)", regex=True, na=False)]

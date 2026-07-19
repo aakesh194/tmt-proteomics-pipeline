@@ -11,6 +11,7 @@ import argparse
 import sys
 import os
 import json
+import time
 from datetime import datetime
 
 from pipeline.gprot_processing import run_gprot_pipeline
@@ -42,6 +43,7 @@ run_phos  = not args.gprot_only
 
 gprot_stats = {}
 phos_stats  = {}
+start_time  = time.time()
 
 try:
     if run_gprot:
@@ -53,6 +55,7 @@ try:
     # build log entry
     entry = {
         "date": str(datetime.now()),
+        "runtime_seconds": round(time.time() - start_time, 1),
         "gprot": gprot_stats,
         "phos": phos_stats,
         "summary": {
@@ -68,27 +71,38 @@ try:
         }
     }
 
-    # load existing log and append
+    # load existing log (supports old list-format files) and append this run
     log_path = "run_log.json"
-    log = []
+    runs = []
     if os.path.exists(log_path):
         with open(log_path) as f:
-            log = json.load(f)
-    log.append(entry)
-    with open(log_path, "w") as f:
-        json.dump(log, f, indent=2)
+            existing = json.load(f)
+        runs = existing if isinstance(existing, list) else existing.get("runs", [])
+    runs.append(entry)
 
-    # cumulative stats
-    total_runs          = len(log)
-    cum_proteins        = sum(r["summary"].get("total_proteins", 0) for r in log)
-    cum_peptides        = sum(r["summary"].get("total_peptides", 0) for r in log)
-    cum_phosphosites    = sum(r["summary"].get("total_phosphosites", 0) for r in log)
-    cum_psms_gprot      = sum(r["summary"].get("total_psms_raw_gprot", 0) for r in log)
-    cum_psms_phos       = sum(r["summary"].get("total_psms_raw_phos", 0) for r in log)
-    all_experiments     = set()
-    for r in log:
+    # cumulative stats across all runs
+    all_experiments = set()
+    for r in runs:
         all_experiments.update(r.get("gprot", {}).keys())
         all_experiments.update(r.get("phos", {}).keys())
+
+    total_runtime_sec = round(sum(r.get("runtime_seconds", 0) for r in runs), 1)
+    cumulative = {
+        "total_runs":              len(runs),
+        "unique_experiments":      len(all_experiments),
+        "total_gprot_experiments": sum(r["summary"].get("gprot_experiments", 0) for r in runs),
+        "total_phos_experiments":  sum(r["summary"].get("phos_experiments", 0) for r in runs),
+        "total_proteins":          sum(r["summary"].get("total_proteins", 0) for r in runs),
+        "total_peptides":          sum(r["summary"].get("total_peptides", 0) for r in runs),
+        "total_phosphosites":      sum(r["summary"].get("total_phosphosites", 0) for r in runs),
+        "total_psms_raw_gprot":    sum(r["summary"].get("total_psms_raw_gprot", 0) for r in runs),
+        "total_psms_raw_phos":     sum(r["summary"].get("total_psms_raw_phos", 0) for r in runs),
+        "total_runtime_seconds":   total_runtime_sec,
+        "total_runtime_hours":     round(total_runtime_sec / 3600, 2),
+    }
+
+    with open(log_path, "w") as f:
+        json.dump({"runs": runs, "cumulative": cumulative}, f, indent=2)
 
 except KeyboardInterrupt:
     print("\n[aborted] pipeline interrupted by user", file=sys.stderr)
