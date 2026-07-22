@@ -1,11 +1,5 @@
 # -*- coding: utf-8 -*-
-"""
-run.py - Entry point for the omics pipeline.
-
-Author: Aakesh Yoganathan
-Lab: Tamir Lab, UNC Chapel Hill
-Dependencies: See requirements.txt
-"""
+"""pipeline entry point"""
 
 import argparse
 import sys

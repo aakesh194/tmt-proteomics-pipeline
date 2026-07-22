@@ -74,9 +74,11 @@ min_fraction_channels_present: 0.33
 
 
 # --- Bridge / Pool Channels --------------------------------------------------
-# Regex pattern identifying pool/bridge channels (used for normalization)
+# Set bridge_enabled: false for experiments WITHOUT a pool/bridge channel —
+# bridgeCenter_data is skipped everywhere and sample abundances pass through
+# untouched. When true (default), pool_regex identifies the pool columns.
+bridge_enabled: true
 pool_regex: "BRG"
-#bridge_regex: "B.*\\d+"
 
 
 # --- Phospho-Specific Settings -----------------------------------------------
@@ -92,8 +94,17 @@ phos_mod_filter: "Phos"
 # Enrichment-specific filter: "pY" or "pSQTQ" (leave blank to disable)
 phos_enrichment_filter: ""
 
-# Output label used for phos folders/filenames (e.g., "phos", "pST", "pY")
-phos_output_prefix: "phos"
+# Phos output naming:
+#   phos_output_folder       — subfolder name under <out_dir>/<expType>/
+#                              (was `phos_output_prefix`; renamed for accuracy)
+#   phos_output_file_prefix  — optional prefix prepended to every stage CSV
+#                              inside that folder. Leave blank for current
+#                              behaviour (files named 01_..., 02_..., etc).
+#                              Set to distinguish outputs when running multiple
+#                              phos flavors for the same experiment
+#                              (e.g. folder="pY", file_prefix="pY").
+phos_output_folder:      "phos"
+phos_output_file_prefix: ""
 
 # Post-bridge toggle (multi-run combined outputs)
 gprot_post_bridge: true

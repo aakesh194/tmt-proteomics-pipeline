@@ -48,6 +48,4 @@ See `outputs/README.md` for the current folder structure and file descriptions.
 
 ---
 
-**Aakesh Yoganathan**  
-Undergraduate Researcher — Tamir Lab, UNC Chapel Hill  
-[@aakesh194](https://github.com/aakesh194)
+Tamir Lab, UNC-Chapel Hill

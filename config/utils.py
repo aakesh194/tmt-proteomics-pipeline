@@ -1,10 +1,7 @@
 """
-utils.py - Configuration loader for the omics pipeline
+Configuration loader for the omics pipeline
 
 Loads settings from config.yaml. Non-programmers should edit config.yaml only.
-
-Author: Aakesh Yoganathan
-Lab: Tamir Lab, UNC Chapel Hill
 """
 
 import os

@@ -1,9 +1,4 @@
-"""
-proteomics_core.py - Shared functions for gProt and phos pipelines
-
-Author: Aakesh Yoganathan
-Lab: Tamir Lab, UNC Chapel Hill
-"""
+"""functions for gProt and phos pipelines"""
 
 import os
 import numpy as np
@@ -135,6 +130,21 @@ def meanCenter_data(df, eT=None):
     return dfmc, dfzs
 
 
+def apply_sup_correction(df, sup):
+    """Divide each df column by the matching value in sup (a 1-row DataFrame of correction factors)."""
+    out = df.copy()
+    for col in out.columns:
+        if col in sup.columns:
+            factor = sup[col].iloc[0]
+            if pd.isna(factor) or factor == 0:
+                raise ValueError(
+                    f"Invalid correction factor for column {col!r}: {factor}. "
+                    "Zero or NaN factors indicate upstream data corruption."
+                )
+            out[col] = out[col] / factor
+    return out
+
+
 def bridgeCenter_data(df, brg_regex):
     """
     Normalize data to bridge channel(s).
@@ -144,14 +154,19 @@ def bridgeCenter_data(df, brg_regex):
     if len(brg_cols) == 0:
         print(f"  ⚠️  No bridge columns found matching pattern: {brg_regex}")
         return df.copy()
-    
-    #print(f"  Found {len(brg_cols)} bridge column(s): {list(brg_cols)}")
-    
-    # Use mean of multiple bridge channels if 
+
+    # Use mean of multiple bridge channels if more than one
     bridge = df[brg_cols].mean(axis=1)
     dfbrg = df.div(bridge, axis=0)
     dfbrg = dfbrg.drop(list(dfbrg.filter(regex=brg_regex)), axis=1)
     return dfbrg
+
+
+def bridge_if_enabled(df, cfg):
+    """Bridge-normalize when cfg['bridge_enabled'] is truthy (default), else passthrough."""
+    if not cfg.get("bridge_enabled", True):
+        return df.copy()
+    return bridgeCenter_data(df, cfg["pool_regex"])
 
 
 
@@ -187,19 +202,24 @@ def process_runs(corrDFs, keys, cfg):
     allBrgs = allBrgs[natsorted(allBrgs.columns)]
     allBrgs = allBrgs.dropna()
 
-    # Calculate bridge correction factors
-    filtered_cols = allBrgs.filter(regex=cfg["pool_regex"])
-    if filtered_cols.shape[1] == 0:
-        print(f"-- No pool columns found for multi-run correction --")
+    bridge_on = cfg.get("bridge_enabled", True)
+
+    # Calculate bridge correction factors (empty when bridge disabled)
+    if not bridge_on:
         mcB_run = pd.DataFrame()
     else:
-        mcB_run, _ = meanCenter_data(filtered_cols, "brg")
-        mcB_run = mcB_run.mean(axis=0)
-        mcB_run = mcB_run.to_frame().transpose()
-    
-    # Bridge normalization for each run
+        filtered_cols = allBrgs.filter(regex=cfg["pool_regex"])
+        if filtered_cols.shape[1] == 0:
+            print(f"-- No pool columns found for multi-run correction --")
+            mcB_run = pd.DataFrame()
+        else:
+            mcB_run, _ = meanCenter_data(filtered_cols, "brg")
+            mcB_run = mcB_run.mean(axis=0)
+            mcB_run = mcB_run.to_frame().transpose()
+
+    # Bridge normalization for each run (identity when bridge disabled)
     for k in keys:
-        brgA = bridgeCenter_data(corrDFs[k], cfg["pool_regex"])
+        brgA = bridgeCenter_data(corrDFs[k], cfg["pool_regex"]) if bridge_on else corrDFs[k].copy()
         brg_corr[k + '_brgA'] = brgA
 
     # Apply run corrections

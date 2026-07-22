@@ -1,9 +1,4 @@
-"""
-phos_processing.py - Phosphoproteomics (phos) specific processing
-
-Author: Aakesh Yoganathan
-Lab: Tamir Lab, UNC Chapel Hill
-"""
+"""Phosphoproteomics (phos) specific processing"""
 
 import os
 import numpy as np
@@ -15,8 +10,10 @@ from halo import Halo
 from config.utils import load_config
 from pipeline.proteomics_core import (
     PSM_filter,
+    apply_sup_correction,
     nan_imputation,
     bridgeCenter_data,
+    bridge_if_enabled,
     run_post_bridge_outputs,
     qc_heatmap_post_bridge,
     pick_post_bridge_csv,
@@ -105,14 +102,15 @@ def _resolve_sup_corr_path(sup_corr_value, out_dir: str, out_prefix: str) -> str
         if marker in prefix_l:
             transforms.add(prefix_l.replace(marker, ""))
 
-    # Also try collapsing double-underscores caused by removals
+    # Also try collapsing double-underscores caused by removals.
+    # Sort so candidate order is deterministic across runs/platforms.
     normalized = set()
     for t in transforms:
         tt = str(t).replace("__", "_").strip("_")
         normalized.add(tt)
         normalized.add(tt.lower())
         normalized.add(tt.upper())
-    transforms = normalized
+    transforms = sorted(normalized)
 
     for t in transforms:
         candidates.append(os.path.join(out_dir, t, "gprot", "05_corr_factors.csv"))
@@ -418,7 +416,7 @@ def sum_psms_phos(df, pepts, mods, phos_site, exp_type, cfg, out_dir=""):
         sites  = str(row['Site']).split(', ')
         motifs = str(row['Motif']).split(', ')
         result = []
-        for s, m in zip(sites, motifs):
+        for s, m in zip(sites, motifs, strict=True):
             if 'X' in m:
                 try:
                     result.append(phos_lookup.loc[(row['Accessions'], s)])
@@ -467,7 +465,9 @@ def process_phos_dataset(index, dataDF, cfg):
     raw_dir = cfg.get("raw_dir", "")
     out_dir = cfg.get("out_dir", "")
     lib_dir = cfg.get("lib_dir", "")
-    out_label = cfg.get("phos_output_prefix", "phos")
+    out_label = cfg.get("phos_output_folder", cfg.get("phos_output_prefix", "phos"))
+    file_prefix = cfg.get("phos_output_file_prefix", "")
+    file_prefix_ = f"{file_prefix}_" if file_prefix else ""
     
     out_prefix = str(index)
     if out_dir:
@@ -512,9 +512,9 @@ def process_phos_dataset(index, dataDF, cfg):
         #print(f"    Filtering + imputation...")
         sp.text = f"  {out_prefix} — filtering..."
         psm_filtered = PSM_filter(psms, libs, cfg)
-        psm_filtered.to_csv(os.path.join(run_dir, "01_psm_filtered.csv"), index=False)
+        psm_filtered.to_csv(os.path.join(run_dir, f"{file_prefix_}01_psm_filtered.csv"), index=False)
         PSMdf = nan_imputation(psm_filtered, mgf_dict, cfg)
-        PSMdf.to_csv(os.path.join(run_dir, "02_psm_imputed.csv"), index=False)
+        PSMdf.to_csv(os.path.join(run_dir, f"{file_prefix_}02_psm_imputed.csv"), index=False)
         qc_warn_no_row_change("PSM filtering+imputation", psm_start, len(PSMdf), context=out_prefix)
         #print(len(PSMdf))
         
@@ -535,10 +535,7 @@ def process_phos_dataset(index, dataDF, cfg):
         # Save a copy of the correction factors used for this run (named after metadata `sup_corr`)
         corr_copy_name = os.path.basename(str(sup_corr_path)) if sup_corr_path else "corr_factors.csv"
         corrSum.to_csv(os.path.join(run_dir, corr_copy_name), index=False)
-        corrPhos = sumPSMdf.copy()
-        for col in corrPhos.columns:
-            if col in corrSum.columns:
-                corrPhos[col] = corrPhos[col] / corrSum[col][0]
+        corrPhos = apply_sup_correction(sumPSMdf, corrSum)
 
         qc_warn_no_value_change("correction factor (phospho)", sumPSMdf, corrPhos, context=out_prefix, cols=corrSum.columns)
         
@@ -579,7 +576,9 @@ def run_phos_pipeline(cfg=None, exp_types=None):
     _reset_run_state()
 
     print(f"\n[phos]")
-    out_label = cfg.get("phos_output_prefix", "phos")
+    out_label = cfg.get("phos_output_folder", cfg.get("phos_output_prefix", "phos"))
+    file_prefix = cfg.get("phos_output_file_prefix", "")
+    file_prefix_ = f"{file_prefix}_" if file_prefix else ""
     do_post_bridge = cfg.get("phos_post_bridge", cfg.get("phos_do_bridge", False))
     
     dataDF = pd.read_csv(cfg["meta_phos_csv"], sep=",").set_index(cfg["meta_index"])
@@ -609,8 +608,8 @@ def run_phos_pipeline(cfg=None, exp_types=None):
             sample_cols = [c for c in phos_corr.columns if c not in id_cols]
             phos_mat = phos_corr.set_index(id_cols)[sample_cols]
 
-            # Pool-bridge using regex; drops pool channels after normalization.
-            phos_brg = bridgeCenter_data(phos_mat, cfg["pool_regex"])
+            # Pool-bridge (skipped when cfg['bridge_enabled'] is False).
+            phos_brg = bridge_if_enabled(phos_mat, cfg)
 
             phos_brg.to_csv(os.path.join(run_dir, "07_post_pool_bridge.csv"))
 

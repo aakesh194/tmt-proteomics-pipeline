@@ -1,9 +1,4 @@
-"""
-gprot_processing.py - Global proteomics (gProt) specific processing
-
-Author: Aakesh Yoganathan
-Lab: Tamir Lab, UNC Chapel Hill
-"""
+"""Global proteomics (gProt) specific processing"""
 
 import os
 import numpy as np
@@ -205,15 +200,8 @@ def process_gprot_dataset(index, dataDF, cfg):
         corrSum.to_csv(alias_path, index=False)
 
         # Apply corrections
-        corrProt = sumPSMdf.copy()
-        corrPept = peps.copy()
-        for col in corrProt.columns:
-            if col in corrSum.columns:
-                corrProt[col] = corrProt[col] / corrSum[col][0] 
-        
-        for col in corrPept.columns:
-            if col in corrSum.columns:
-                corrPept[col] = corrPept[col] / corrSum[col][0]
+        corrProt = apply_sup_correction(sumPSMdf, corrSum)
+        corrPept = apply_sup_correction(peps, corrSum)
 
         qc_warn_no_value_change("correction factor (proteins)", sumPSMdf, corrProt, context=out_prefix, cols=corrSum.columns)
         qc_warn_no_value_change("correction factor (peptides)", peps, corrPept, context=out_prefix, cols=corrSum.columns)
@@ -291,8 +279,8 @@ def run_gprot_pipeline(cfg=None, exp_types=None):
             sample_cols = [c for c in gprot_corr.columns if c not in id_cols]
             gprot_mat = gprot_corr.set_index(id_cols)[sample_cols]
 
-            # Pool-bridge using regex; drops pool channels after normalization.
-            gprot_brg = bridgeCenter_data(gprot_mat, cfg["pool_regex"])
+            # Pool-bridge (skipped when cfg['bridge_enabled'] is False).
+            gprot_brg = bridge_if_enabled(gprot_mat, cfg)
 
             gprot_brg.to_csv(os.path.join(run_dir, "07_post_pool_bridge.csv"))
 
