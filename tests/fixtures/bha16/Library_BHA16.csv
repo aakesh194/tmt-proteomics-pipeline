@@ -1,0 +1,31 @@
+headers,names
+Abundance 126,MB18
+Abundance 127N,MB16
+Abundance 127C,MB14
+Abundance 128N,MB12
+Abundance 128C,MB10
+Abundance 129N,MB8
+Abundance 129C,MB6
+Abundance 130N,MB4
+Abundance 130C,MB2
+Abundance 131N,FB10
+Abundance 131C,FB8
+Abundance 132N,FB6
+Abundance 132C,FB5
+Abundance 133N,FB3
+Abundance 134N,FB1
+Abundance 135N,BHA-BRG2
+Sequence,Sequence
+Annotated Sequence,Annotated Sequence
+Modifications,Modifications
+Master Protein Accessions,Master Protein Accessions
+Master Protein Descriptions,Master Protein Descriptions
+Search Engine Rank,Search Engine Rank
+Delta M in ppm,Delta M in ppm
+Delta mz in Da,Delta mz in Da
+Ions Score,Ions Score
+Expectation Value,Expectation Value
+PhosphoRS Best Site Probabilities,PhosphoRS
+First Scan,scans
+Charge,charge
+mz in Da,pepmass

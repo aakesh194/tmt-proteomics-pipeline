@@ -1,0 +1,60 @@
+Checked	Confidence	Modification Name	Target Amino Acid	Position in Peptide	Site Probability	Peptide Sequence	Number of Modified PSMs	Number of Uncertain Modified PSMs	Number of Unmodified PSMs	Protein Accession	Protein Description	Position	Master	Motif
+False	High	Phospho	S	22	100.0	VQGEAVSNIQENTQTPTVQEESEEEEVDETGVEVK	2	26	0	P70670	Nascent polypeptide-associated complex subunit alpha, muscle-specific form OS=Mus musculus OX=10090 GN=Naca PE=1 SV=2	2138	IsMasterProtein	TPTVQEEsEEEEVDE
+False	High	Phospho	S	5	100.0	DPNASPGDAGEQAIR	5	0	0	Q64727	Vinculin OS=Mus musculus OX=10090 GN=Vcl PE=1 SV=4	290	IsMasterProtein	WLRDPNAsPGDAGEQ
+False	High	Phospho	S	11	100.0	QPATPTAAESSEGEGEEGDDGGETESR	3	0	0	Q91XU0	ATPase WRNIP1 OS=Mus musculus OX=10090 GN=Wrnip1 PE=1 SV=2	92	IsMasterProtein	TPTAAESsEGEGEEG
+False	High	Phospho	S	13	100.0	FSGEEGEIEDDESGTENR	4	0	0	Q569Z6	Thyroid hormone receptor-associated protein 3 OS=Mus musculus OX=10090 GN=Thrap3 PE=1 SV=1	935	IsMasterProtein	GEIEDDEsGTENREE
+False	High	Phospho	S	21	100.0	GFGDGYNGYGGGPGGGNFGGSPGYGGGR	4	0	0	O88569	Heterogeneous nuclear ribonucleoproteins A2/B1 OS=Mus musculus OX=10090 GN=Hnrnpa2b1 PE=1 SV=2	259	IsMasterProtein	GGGNFGGsPGYGGGR
+False	High	Phospho	S	13	100.0	DSDQVAQSDGEESPAAEEQLLGER	3	0	6	Q3UPL0	Protein transport protein Sec31A OS=Mus musculus OX=10090 GN=Sec31a PE=1 SV=2	531	IsMasterProtein	AQSDGEEsPAAEEQL
+False	High	Phospho	T	14	100.0	LPAPQEDTASEAGTPQGEVQTR	9	0	1	Q64012	RNA-binding protein Raly OS=Mus musculus OX=10090 GN=Raly PE=1 SV=3	274	IsMasterProtein	DTASEAGtPQGEVQT
+False	High	Phospho	S	10	100.0	LPAPQEDTASEAGTPQGEVQTR	5	0	5	Q64012	RNA-binding protein Raly OS=Mus musculus OX=10090 GN=Raly PE=1 SV=3	270	IsMasterProtein	APQEDTAsEAGTPQG
+False	High	Phospho	S	7	100.0	EAGLSQSHDDLSNTTATPSVR	3	0	0	Q80X80	Phospholipid transfer protein C2CD2L OS=Mus musculus OX=10090 GN=C2cd2l PE=1 SV=3	662	IsMasterProtein	KEAGLSQsHDDLSNT
+False	High	Phospho	S	13	100.0	GHPSAGAEEEGGSDGSAAEAEPR	18	1	3	Q8JZQ9	Eukaryotic translation initiation factor 3 subunit B OS=Mus musculus OX=10090 GN=Eif3b PE=1 SV=1	120	IsMasterProtein	GAEEEGGsDGSAAEA
+False	High	Phospho	S	16	100.0	GHPSAGAEEEGGSDGSAAEAEPR	15	1	6	Q8JZQ9	Eukaryotic translation initiation factor 3 subunit B OS=Mus musculus OX=10090 GN=Eif3b PE=1 SV=1	123	IsMasterProtein	EEGGSDGsAAEAEPR
+False	High	Phospho	S	5	100.0	AVPVSPSAVEEDEDEDGHTVVATAR	3	2	0	P39447	Tight junction protein 1 OS=Mus musculus OX=10090 GN=Tjp1 PE=1 SV=2	1614	IsMasterProtein	MPKAVPVsPSAVEED
+False	High	Phospho	S	3	100.0	SQSPAASDCSSSSSSASLPSSGR	11	0	0	Q9JLV1	BAG family molecular chaperone regulator 3 OS=Mus musculus OX=10090 GN=Bag3 PE=1 SV=2	179	IsMasterProtein	HGPERSQsPAASDCS
+False	High	Phospho	S	10	100.0	EEEEGISQESSEEEQ	2	4	3	P17095	High mobility group protein HMG-I/HMG-Y OS=Mus musculus OX=10090 GN=Hmga1 PE=1 SV=4	102	IsMasterProtein	EEGISQEsSEEEQ
+False	High	Phospho	S	8	100.0	GILAADESVGTMGNR	9	0	8	Q91Y97	Fructose-bisphosphate aldolase B OS=Mus musculus OX=10090 GN=Aldob PE=1 SV=3	36	IsMasterProtein	GILAADEsVGTMGNR
+False	High	Phospho	S	5	100.0	YAALSVDGEDEDEGDDCTE	12	0	0	Q8BGD9	Eukaryotic translation initiation factor 4B OS=Mus musculus OX=10090 GN=Eif4b PE=1 SV=1	597	IsMasterProtein	ASKYAALsVDGEDED
+False	High	Phospho	S	4	100.0	FHDSEGDDTEETEDYR	12	0	0	Q8K019	Bcl-2-associated transcription factor 1 OS=Mus musculus OX=10090 GN=Bclaf1 PE=1 SV=2	395	IsMasterProtein	AKQKFHDsEGDDTEE
+False	High	Phospho	S	3	100.0	SASPDDDLGSSNWEAADLGNEER	9	4	0	Q9R0P4	Small acidic protein OS=Mus musculus OX=10090 GN=Smap PE=1 SV=1	17	IsMasterProtein	HGVKRSAsPDDDLGS
+False	High	Phospho	S	7	100.0	HVTSNASDSESSYR	7	0	0	Q811D0	Disks large homolog 1 OS=Mus musculus OX=10090 GN=Dlg1 PE=1 SV=1	688	IsMasterProtein	KHVTSNAsDSESSYR
+False	High	Phospho	S	9	100.0	AGGAGGEGSDDDTSLT	28	2	3	Q9JMD3	START domain-containing protein 10 OS=Mus musculus OX=10090 GN=Stard10 PE=1 SV=1	284	IsMasterProtein	GGAGGEGsDDDTSLT
+False	High	Phospho	S	17	100.0	YQDEVFGGFVTEPQEESEEEVEEPEER	17	4	0	P97855	Ras GTPase-activating protein-binding protein 1 OS=Mus musculus OX=10090 GN=G3bp1 PE=1 SV=1	149	IsMasterProtein	VTEPQEEsEEEVEEP
+False	High	Phospho	S	7	100.0	SVPTVDSGNEDDDSSFK	9	1	0	Q05D44	Eukaryotic translation initiation factor 5B OS=Mus musculus OX=10090 GN=Eif5b PE=1 SV=2	215	IsMasterProtein	KSVPTVDsGNEDDDS
+False	High	Phospho	T	16	100.0	VDGSNLEGGSQQGPSTPPNTPDPR	6	0	0	Q9JJW5	Myozenin-2 OS=Mus musculus OX=10090 GN=Myoz2 PE=1 SV=1	107	IsMasterProtein	GSQQGPStPPNTPDP
+False	High	Phospho	S	11	100.0	AASDGQYENQSPEATSPR	2	0	3	E9Q0S6	Tensin-1 OS=Mus musculus OX=10090 GN=Tns1 PE=1 SV=1	1062	IsMasterProtein	DGQYENQsPEATSPR
+False	High	Phospho	T	10	99.5	SGSMEEDVDTSPGGDYYTSPNSPTSSSR	4	0	4	P70255	Nuclear factor 1 C-type OS=Mus musculus OX=10090 GN=Nfic PE=1 SV=1	293	IsMasterProtein	SMEEDVDtSPGGDYY
+False	High	Phospho	S	22	99.0	SGSMEEDVDTSPGGDYYTSPNSPTSSSR	7	1	0	P70255	Nuclear factor 1 C-type OS=Mus musculus OX=10090 GN=Nfic PE=1 SV=1	305	IsMasterProtein	DYYTSPNsPTSSSRN
+False	High	Phospho	S	7	100.0	LQEEGGSEEEEAGNPSEDGMQSGPTQAPPR	3	0	0	Q99LL5	Periodic tryptophan protein 1 homolog OS=Mus musculus OX=10090 GN=Pwp1 PE=1 SV=1	49	IsMasterProtein	KLQEEGGsEEEEAGN
+False	High	Phospho	S	13	100.0	ASLQSGQEGPGDSPGSQFSK	2	0	0	Q9R1E0	Forkhead box protein O1 OS=Mus musculus OX=10090 GN=Foxo1 PE=1 SV=2	284	IsMasterProtein	GQEGPGDsPGSQFSK
+False	High	Phospho	S	9	100.0	QVNSTSSPSPEHLLAEDR	3	0	0	B1AVZ0	Uracil phosphoribosyltransferase homolog OS=Mus musculus OX=10090 GN=Uprt PE=1 SV=1	25	IsMasterProtein	VNSTSSPsPEHLLAE
+False	High	Phospho	S	17	100.0	SAVAVYSYSCEGSEDESEDESSFEGR	3	0	0	Q8BGW1	Alpha-ketoglutarate-dependent dioxygenase FTO OS=Mus musculus OX=10090 GN=Fto PE=1 SV=1	253	IsMasterProtein	CEGSEDEsEDESSFE
+False	High	Phospho	S	3	100.0	QVSASELCTSGILDR	11	0	0	Q8R0W0	Epiplakin OS=Mus musculus OX=10090 GN=Eppk1 PE=1 SV=2	2705	IsMasterProtein	PGLRRQVsASELCTS
+False	High	Phospho	S	3	100.0	QVSASELCTSGILDR	11	0	0	Q8R0W0	Epiplakin OS=Mus musculus OX=10090 GN=Eppk1 PE=1 SV=2	3220	IsMasterProtein	PGLRRQVsASELCTS
+False	High	Phospho	S	3	100.0	QVSASELCTSGILDR	11	0	0	Q8R0W0	Epiplakin OS=Mus musculus OX=10090 GN=Eppk1 PE=1 SV=2	3735	IsMasterProtein	PGLRRQVsASELCTS
+False	High	Phospho	S	3	100.0	QVSASELCTSGILDR	11	0	0	Q8R0W0	Epiplakin OS=Mus musculus OX=10090 GN=Eppk1 PE=1 SV=2	4250	IsMasterProtein	PGLRRQVsASELCTS
+False	High	Phospho	S	3	100.0	QVSASELCTSGILDR	11	0	0	Q8R0W0	Epiplakin OS=Mus musculus OX=10090 GN=Eppk1 PE=1 SV=2	4765	IsMasterProtein	PGLRRQVsASELCTS
+False	High	Phospho	S	3	100.0	QVSASELCTSGILDR	11	0	0	Q8R0W0	Epiplakin OS=Mus musculus OX=10090 GN=Eppk1 PE=1 SV=2	5280	IsMasterProtein	PGLRRQVsASELCTS
+False	High	Phospho	S	3	100.0	QVSASELCTSGILDR	11	0	0	Q8R0W0	Epiplakin OS=Mus musculus OX=10090 GN=Eppk1 PE=1 SV=2	5795	IsMasterProtein	PGLRRQVsASELCTS
+False	High	Phospho	S	3	100.0	QVSASELCTSGILDR	11	0	0	Q8R0W0	Epiplakin OS=Mus musculus OX=10090 GN=Eppk1 PE=1 SV=2	6310	IsMasterProtein	PGLRRQVsASELCTS
+False	High	Phospho	S	12	100.0	GTLDEEDEEADSDTDDIDHR	1	0	0	Q8VCE2	GPN-loop GTPase 1 OS=Mus musculus OX=10090 GN=Gpn1 PE=1 SV=1	338	IsMasterProtein	EEDEEADsDTDDIDH
+False	High	Phospho	S	10	100.0	ASPASGHQLSDQEEADHGR	3	0	0	Q9QXY1	Tight junction protein ZO-3 OS=Mus musculus OX=10090 GN=Tjp3 PE=1 SV=1	111	IsMasterProtein	PASGHQLsDQEEADH
+False	High	Phospho	S	10	100.0	GLVAAYSGDSDNEEELVER	9	0	0	Q91YE7	RNA-binding protein 5 OS=Mus musculus OX=10090 GN=Rbm5 PE=1 SV=1	624	IsMasterProtein	VAAYSGDsDNEEELV
+False	High	Phospho	S	10	100.0	GGGSGGGDESEGEEVDED	4	0	0	O35295	Transcriptional regulator protein Pur-beta OS=Mus musculus OX=10090 GN=Purb PE=1 SV=3	316	IsMasterProtein	GSGGGDEsEGEEVDE
+False	High	Phospho	S	6	100.0	HTGPNSPDTANDGFVR	8	0	0	O35737	Heterogeneous nuclear ribonucleoprotein H OS=Mus musculus OX=10090 GN=Hnrnph1 PE=1 SV=3	104	IsMasterProtein	LKHTGPNsPDTANDG
+False	High	Phospho	S	22	100.0	DGTAPPPQSPSSPGSGQDEDWSDEESPR	9	0	0	Q99JB8	Protein kinase C and casein kinase II substrate protein 3 OS=Mus musculus OX=10090 GN=Pacsin3 PE=1 SV=1	354	IsMasterProtein	SGQDEDWsDEESPRK
+False	High	Phospho	S	3	100.0	KDSEEEVSLLGNQDIEEGNSR	1	0	0	P15920	V-type proton ATPase 116 kDa subunit a 2 OS=Mus musculus OX=10090 GN=Atp6v0a2 PE=1 SV=2	695	IsMasterProtein	YTLVRKDsEEEVSLL
+False	High	Phospho	S	17	99.7	SAGTETGSNINANSELSPSAGSR	3	0	0	Q6A026	Sister chromatid cohesion protein PDS5 homolog A OS=Mus musculus OX=10090 GN=Pds5a PE=1 SV=3	1174	IsMasterProtein	INANSELsPSAGSRS
+False	High	Phospho	S	2	99.8	SSPPPLSGASEVDAGELGSER	10	0	0	A6X919	Protein C-mannosyl-transferase DPY19L1 OS=Mus musculus OX=10090 GN=Dpy19l1 PE=1 SV=1	23	IsMasterProtein	PPRSARSsPPPLSGA
+False	High	Phospho	S	4	100.0	SSGSPYGGGYGSGGGSGGYGSR	10	0	0	Q8BG05	Heterogeneous nuclear ribonucleoprotein A3 OS=Mus musculus OX=10090 GN=Hnrnpa3 PE=1 SV=1	359	IsMasterProtein	FGGRSSGsPYGGGYG
+False	High	Phospho	T	14	100.0	VPSSLEGSEGDGDTD	3	0	0	Q9WU56	Pseudouridylate synthase 1 homolog OS=Mus musculus OX=10090 GN=Pus1 PE=1 SV=2	422	IsMasterProtein	GSEGDGDtD
+False	High	Phospho	T	10	99.5	LNQSGASVGTDEESDVTQEEER	2	0	0	Q9ERU9	E3 SUMO-protein ligase RanBP2 OS=Mus musculus OX=10090 GN=Ranbp2 PE=1 SV=2	2130	IsMasterProtein	QSGASVGtDEESDVT
+False	High	Phospho	S	10	100.0	VVDYSQFQESDDADEDYGR	38	0	0	Q80XU3	Nuclear ubiquitous casein and cyclin-dependent kinase substrate 1 OS=Mus musculus OX=10090 GN=Nucks1 PE=1 SV=1	19	IsMasterProtein	DYSQFQEsDDADEDY
+False	High	Phospho	S	9	100.0	DYEEVGADSAEGDDEGEEY	9	0	2	P68373	Tubulin alpha-1C chain OS=Mus musculus OX=10090 GN=Tuba1c PE=1 SV=1	439	IsMasterProtein	YEEVGADsAEGDDEG
+False	High	Phospho	S	8	100.0	TPEELDDSDFETEDFDVR	21	0	0	P26231	Catenin alpha-1 OS=Mus musculus OX=10090 GN=Ctnna1 PE=1 SV=1	641	IsMasterProtein	TPEELDDsDFETEDF
+False	High	Phospho	S	9	100.0	VQVAPLQGSPPLSHDDR	7	0	0	Q9Z0U1	Tight junction protein 2 OS=Mus musculus OX=10090 GN=Tjp2 PE=1 SV=2	107	IsMasterProtein	QVAPLQGsPPLSHDD
+False	High	Phospho	S	15	100.0	AEENNSGVESSGYGSPGPTWDR	3	0	0	O70133	ATP-dependent RNA helicase A OS=Mus musculus OX=10090 GN=Dhx9 PE=1 SV=2	136	IsMasterProtein	VESSGYGsPGPTWDR
+False	High	Phospho	S	2	100.0	MSPMGTASGSNSPTSDSASVQR	5	0	0	O88878	AN1-type zinc finger protein 5 OS=Mus musculus OX=10090 GN=Zfand5 PE=1 SV=1	48	IsMasterProtein	QQNSGRMsPMGTASG
+False	High	Phospho	S	13	100.0	EAENTANQAGNESPVQELR	4	0	0	Q6NVE8	WD repeat-containing protein 44 OS=Mus musculus OX=10090 GN=Wdr44 PE=1 SV=1	50	IsMasterProtein	ANQAGNEsPVQELRQ
+False	High	Phospho	S	14	100.0	TLSNAEDYLDDEDSD	131	0	0	Q62422	Osteoclast-stimulating factor 1 OS=Mus musculus OX=10090 GN=Ostf1 PE=1 SV=2	214	IsMasterProtein	DYLDDEDsD
+False	High	Phospho	S	7	100.0	YVDEDNSDGETVDHR	5	0	0	Q8VDQ9	Protein KRI1 homolog OS=Mus musculus OX=10090 GN=Kri1 PE=1 SV=3	142	IsMasterProtein	KYVDEDNsDGETVDH

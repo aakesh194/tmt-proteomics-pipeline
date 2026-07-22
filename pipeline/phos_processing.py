@@ -520,13 +520,13 @@ def process_phos_dataset(index, dataDF, cfg):
         
         # Phospho-specific filtering
         PSMdf, psm_start, psm_end = phos_filter(PSMdf, index, cfg)
-        PSMdf.to_csv(os.path.join(run_dir, "03_phos_filtered.csv"), index=False)
+        PSMdf.to_csv(os.path.join(run_dir, f"{file_prefix_}03_phos_filtered.csv"), index=False)
         qc_warn_no_row_change("phospho filtering", psm_start, psm_end, context=out_prefix)
         
         # Summarize to phosphosite level with motifs
         sp.text = f"  {out_prefix} — motif mapping..."
         sumPSMdf = sum_psms_phos(PSMdf, pepts, mods, phos_site, out_prefix, cfg, out_dir=run_dir)
-        sumPSMdf.to_csv(os.path.join(run_dir, "04_sum_psms_phos.csv"))
+        sumPSMdf.to_csv(os.path.join(run_dir, f"{file_prefix_}04_sum_psms_phos.csv"))
         qc_warn_no_row_change("phosphosite summarization", psm_end, len(sumPSMdf), context=out_prefix)
         sumPSM[index] = sumPSMdf
         
@@ -549,7 +549,7 @@ def process_phos_dataset(index, dataDF, cfg):
         
         # Save output
         sp.text = f"  {out_prefix} — saving"
-        corr_phos_path = os.path.join(run_dir, "06_corr_phos.csv")
+        corr_phos_path = os.path.join(run_dir, f"{file_prefix_}06_corr_phos.csv")
         corrPhos.to_csv(corr_phos_path)
 
         # print(f"      {index} — {psm_start} PSMs → {psm_end} after filters → {len(sumPSMdf)} sites")
@@ -598,7 +598,7 @@ def run_phos_pipeline(cfg=None, exp_types=None):
     for index in indices:
         out_prefix = str(index)
         run_dir = os.path.join(out_dir, out_prefix, out_label)
-        phos_corr_path = os.path.join(run_dir, "06_corr_phos.csv")
+        phos_corr_path = os.path.join(run_dir, f"{file_prefix_}06_corr_phos.csv")
 
         with Halo(spinner="dots", color="cyan", text="generating combined QC heatmap...") as sp:
             phos_corr = pd.read_csv(phos_corr_path)
@@ -611,7 +611,7 @@ def run_phos_pipeline(cfg=None, exp_types=None):
             # Pool-bridge (skipped when cfg['bridge_enabled'] is False).
             phos_brg = bridge_if_enabled(phos_mat, cfg)
 
-            phos_brg.to_csv(os.path.join(run_dir, "07_post_pool_bridge.csv"))
+            phos_brg.to_csv(os.path.join(run_dir, f"{file_prefix_}07_post_pool_bridge.csv"))
 
             # QC heatmap AFTER bridging
             qc_heatmap_post_bridge(
