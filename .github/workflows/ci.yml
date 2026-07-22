@@ -37,3 +37,22 @@ jobs:
         # (not committed to the repo). Everything else — including real-data
         # integration tests using tests/fixtures/ — runs.
         run: pytest -v -m "not local_only"
+
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install ruff
+        run: pip install ruff
+
+      # Pyflakes only (real correctness rules — unused imports, unused vars,
+      # undefined names). Skip F403/F405 (star imports are intentional in
+      # pipeline/) and F541 (f-strings without placeholders are fine for logs).
+      - name: Ruff check
+        run: ruff check --select F --ignore F403,F405,F541 .

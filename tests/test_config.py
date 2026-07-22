@@ -72,7 +72,7 @@ STRING_KEYS = [
     "phos_site_accession_col", "phos_site_site_col", "phos_site_motif_col",
     "meta_index", "raw_dir", "lib_dir", "out_dir",
     "require_mod_contains", "abundance_contains", "pool_regex",
-    "phos_mod_filter", "phos_output_prefix",
+    "phos_mod_filter", "phos_output_folder", "phos_output_file_prefix",
 ]
 
 NUMERIC_KEYS = [
@@ -85,6 +85,7 @@ NUMERIC_KEYS = [
 BOOL_KEYS = [
     "gprot_use_top_quantile", "gprot_use_low_variance",
     "gprot_post_bridge", "phos_post_bridge", "qc_zscore",
+    "bridge_enabled",
 ]
 
 META_COLS_SUBKEYS = ["psms", "mgf", "library", "pepts", "mods", "sup_corr"]

@@ -11,7 +11,6 @@ import textwrap
 
 import pandas as pd
 import pytest
-from pyteomics import mgf
 
 from pipeline.gprot_processing import (
     _reset_run_state,
@@ -20,10 +19,8 @@ from pipeline.gprot_processing import (
     sup_Corrections,
 )
 from pipeline.proteomics_core import (
-    PSM_filter,
     apply_sup_correction,
     bridgeCenter_data,
-    nan_imputation,
 )
 
 

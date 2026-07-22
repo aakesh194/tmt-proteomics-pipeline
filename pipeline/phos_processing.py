@@ -12,7 +12,6 @@ from pipeline.proteomics_core import (
     PSM_filter,
     apply_sup_correction,
     nan_imputation,
-    bridgeCenter_data,
     bridge_if_enabled,
     run_post_bridge_outputs,
     qc_heatmap_post_bridge,
@@ -373,15 +372,6 @@ def sum_psms_phos(df, pepts, mods, phos_site, exp_type, cfg, out_dir=""):
     mods1['Site in Protein'] = mods1['Target Amino Acid'].astype('string') + mods1['Position'].astype('string')
     mods1['ID'] = mods1['Protein Accession'] + '_' + mods1['Peptide Sequence']
     mods2 = mods1[['ID', 'Site in Protein', 'Motif']]
-    
-    # Create dictionaries for motif mapping
-    modsdict = {k: f.groupby('Site in Protein')['Motif'].apply(list).to_dict() for k, f in mods2.groupby('ID')}
-    
-    # Prepare PhosphoSitePlus dictionary
-    # phos_site['Site'] = phos_site['Site']
-    # phos_site['Motif'] = phos_site['Motif']
-    # phos_site['Accession'] = phos_site['Accession']
-    phosSiteDict = {k: f.groupby('Site')['Motif'].apply(list).to_dict() for k, f in phos_site.groupby('Accession')}
     
     phosSum2 = phosSum1.copy()
     phosSum2['Motif'] = ''
