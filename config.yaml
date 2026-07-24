@@ -1,38 +1,14 @@
 # =============================================================================
 # PIPELINE CONFIGURATION
-# Edit this file to configure your analysis. Do not edit the .py files.
+# Edit this file to configure your analysis.
 # =============================================================================
 
 
-# --- Metadata Files ----------------------------------------------------------
-# CSV files describing your experiments (one row per experiment type)
-meta_prot_csv: "data/metaFiles_gProt_BHA_2.csv"
-meta_phos_csv: "data/metaFiles_gphos_BHA_2.csv"
+# ================== #
+#  WHAT TO ANALYZE   #
+# ================== #
 
-# PhosphoSitePlus motif reference file
-phos_site_csv: "data/Phosphosite Motifs_M.csv"
-
-# Column names inside `phos_site_csv` used for motif mapping
-# (Default matches `data/Phosphosite Motifs_M.csv`. For other PSP exports you may need to
-# change these, e.g. `Accession` stays the same but `MOD_RSD` -> Site and `SITE_7_AA` -> Motif.)
-phos_site_accession_col: "Accession"
-phos_site_site_col: "Site"
-phos_site_motif_col: "Motif"
-
-# Column in the metadata CSV that identifies each experiment
-meta_index: "expType"
-
-# Column names inside the metadata CSV
-meta_cols:
-  psms:     "PSMs"
-  mgf:      "mgf_file"
-  library:  "library"
-  pepts:    "pepts"
-  mods:     "mods"
-  sup_corr: "sup_corr"
-
-
-# --- Folders -----------------------------------------------------------------
+## -- Folders -- ##
 # Where your raw instrument files live
 raw_dir: "data/raw-files"
 # Where spectral library files live
@@ -41,7 +17,34 @@ lib_dir: "data/library-files"
 out_dir: "outputs"
 
 
-# --- PSM Filtering -----------------------------------------------------------
+## -- Metadata files (column mapping lives in ADVANCED section) -- ##
+# CSV files describing your experiments, one row per experiment type
+meta_prot_csv: "data/metaFiles_gProt_BHA_2.csv"
+meta_phos_csv: "data/metaFiles_gphos_BHA_2.csv"
+
+# PhosphoSitePlus motif reference
+phos_site_csv: "data/Phosphosite Motifs_M.csv"
+
+
+## -- Bridge / pool channel -- ##
+# Set bridge_enabled: false for experiments WITHOUT a pool/bridge channel —
+# bridge normalization is skipped and sample abundances pass through untouched.
+bridge_enabled: true
+
+# Regex identifying pool columns (rarely changes); ignored when bridge_enabled=false
+pool_regex: "BRG"
+
+
+## -- Post-bridge toggle (multi-run combined outputs) -- ##
+gprot_post_bridge: true
+phos_post_bridge: true
+
+
+# ====================== #
+#  FILTERS & THRESHOLDS  #
+# ====================== #
+
+## -- PSM quality -- ##
 # Only PSMs whose mass error (in ppm) falls within this window are kept
 delta_ppm_max: 5
 
@@ -54,69 +57,79 @@ ions_score_min: 15
 # Only keep PSMs whose Modifications field contains this string
 require_mod_contains: "TMT"
 
-# gProt Sup correction: use only the top X% most abundant PSMs
-gprot_use_top_quantile: false   # true = filter, false = use all PSMs
-gprot_top_quantile: 0.75       # 0.75 = top 25%
 
-# gProt Sup correction: use only the X% of PSMs with the least variance
-# (coefficient of variation across abundance channels).
-gprot_use_low_variance: false   # true = filter, false = use all PSMs
-gprot_low_variance_quantile: 0.25  # 0.25 = keep bottom 25% CV (most stable PSMs)
-
-
-# --- Abundance / Channels ----------------------------------------------------
-# Text that identifies abundance columns in the PSM file
-abundance_contains: "Abundance"
-
-# Fraction of TMT channels that must have a value for a PSM to be kept
-# 0.33 means at least 1/3 of channels must be present
+## -- Channel presence -- ##
+# Minimum fraction of TMT channels with quantified values
+# 0.33 = at least one-third of channels present
 min_fraction_channels_present: 0.33
 
 
-# --- Bridge / Pool Channels --------------------------------------------------
-# Set bridge_enabled: false for experiments WITHOUT a pool/bridge channel —
-# bridgeCenter_data is skipped everywhere and sample abundances pass through
-# untouched. When true (default), pool_regex identifies the pool columns.
-bridge_enabled: true
-pool_regex: "BRG"
+## -- gProt-specific settings -- ##
+# Each filter has TWO keys — the on/off toggle AND the quantile value.
+# If you flip a toggle, double-check the quantile too.
+
+# Keep only the top X% most abundant PSMs
+gprot_use_top_quantile: false
+gprot_top_quantile: 0.75      # Keep top 25%
+
+# Keep only the lowest-variance PSMs
+gprot_use_low_variance: false
+gprot_low_variance_quantile: 0.25   # Keep lowest 25% CV
 
 
-# --- Phospho-Specific Settings -----------------------------------------------
+## -- Phospho-specific settings -- ##
 # Minimum average abundance for phospho PSMs
 phos_min_abundance: 1000
 
-# Minimum PhosphoRS site probability (0-100); higher = stricter localization
+# Minimum PhosphoRS site probability (0–100); higher = stricter localization
 phos_ptmrs_threshold: 50
-
-# Regex pattern for PTM filtering in the Modifications column
-phos_mod_filter: "Phos"
 
 # Enrichment-specific filter: "pY" or "pSQTQ" (leave blank to disable)
 phos_enrichment_filter: ""
 
-# Phos output naming:
-#   phos_output_folder       — subfolder name under <out_dir>/<expType>/
-#                              (was `phos_output_prefix`; renamed for accuracy)
-#   phos_output_file_prefix  — optional prefix prepended to every stage CSV
-#                              inside that folder. Leave blank for current
-#                              behaviour (files named 01_..., 02_..., etc).
-#                              Set to distinguish outputs when running multiple
-#                              phos flavors for the same experiment
-#                              (e.g. folder="pY", file_prefix="pY").
-phos_output_folder:      "phos"
+
+# ==================== #
+#  OUTPUT NAMING & QC  #
+# ==================== #
+
+# Phos output naming.
+# Set folder + file_prefix when running multiple phos flavors per experiment
+# (e.g. folder="pY", file_prefix="pY"). Blank file_prefix => default 01_, 02_...
+phos_output_folder: "phos"
 phos_output_file_prefix: ""
 
-# Post-bridge toggle (multi-run combined outputs)
-gprot_post_bridge: true
-phos_post_bridge: true
-
-# --- QC Heatmap --------------------------------------------------------------
-# Number of top variable proteins/sites to show in QC heatmap
+# Number of top-variable proteins/sites in the QC heatmap
 qc_top_n: 300
 
-# Apply z-score normalization to heatmap (true/false)
+# Z-score normalize the QC heatmap
 qc_zscore: true
 
 
-# --- Notes -------------------------------------------------------------------
-notes: ""
+# ============================ #
+#  ADVANCED — LAB CONVENTIONS  #
+# ============================ #
+
+# Column in the metadata CSV that identifies each experiment
+meta_index: "expType"
+
+# Column names inside the metadata CSVs
+meta_cols:
+  psms:     "PSMs"
+  mgf:      "mgf_file"
+  library:  "library"
+  pepts:    "pepts"
+  mods:     "mods"
+  sup_corr: "sup_corr"
+
+# Text that identifies abundance columns in the PSM file
+abundance_contains: "Abundance"
+
+# Regex pattern for PTM filtering in the Modifications column
+phos_mod_filter: "Phos"
+
+# Column names for the PhosphoSitePlus motif reference (phos_site_csv, above).
+# Defaults match `data/Phosphosite Motifs_M.csv`; for other PSP exports these
+# may differ (e.g. MOD_RSD -> Site, SITE_7_AA -> Motif).
+phos_site_accession_col: "Accession"
+phos_site_site_col:      "Site"
+phos_site_motif_col:     "Motif"
