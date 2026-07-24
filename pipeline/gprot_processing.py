@@ -1,6 +1,7 @@
 """Global proteomics (gProt) specific processing"""
 
 import os
+import sys
 import numpy as np
 import pandas as pd
 
@@ -139,7 +140,7 @@ def process_gprot_dataset(index, dataDF, cfg):
         sup_col = cfg.get("meta_cols", {}).get("sup_corr", "sup_corr")
         if sup_col in dataDF.columns:
             sup_corr_value = dataDF.loc[index, sup_col]
-    except Exception:
+    except (KeyError, IndexError):
         sup_corr_value = None
     
     out_prefix = str(index)
@@ -261,39 +262,52 @@ def run_gprot_pipeline(cfg=None, exp_types=None):
     
     stats = {}
     for index in indices:
-        result = process_gprot_dataset(index, dataDF, cfg)
-        stats[index] = result
+        try:
+            result = process_gprot_dataset(index, dataDF, cfg)
+            stats[index] = result
+        except Exception:
+            print(f"\n[error] gprot processing failed for expType={index!r}", file=sys.stderr)
+            raise
 
     # Run QC per expType output.
     #corr_paths = infer_corr_paths(cfg["meta_prot_csv"], cfg["meta_index"], out_dir)
     for index in indices:
-        out_prefix = str(index)
-        run_dir = os.path.join(out_dir, out_prefix, "gprot")
-        gprot_corr_path = os.path.join(run_dir, "06_corr_prot.csv")
+        try:
+            out_prefix = str(index)
+            run_dir = os.path.join(out_dir, out_prefix, "gprot")
+            gprot_corr_path = os.path.join(run_dir, "06_corr_prot.csv")
 
-        with Halo(spinner="dots", color="cyan", text="generating combined QC heatmap...") as sp:
-            gprot_corr = pd.read_csv(gprot_corr_path)
+            with Halo(spinner="dots", color="cyan", text="generating combined QC heatmap...") as sp:
+                gprot_corr = pd.read_csv(gprot_corr_path)
 
-            # Convert to a feature x sample matrix.
-            id_cols = ["Gene", "Accessions"]
-            sample_cols = [c for c in gprot_corr.columns if c not in id_cols]
-            gprot_mat = gprot_corr.set_index(id_cols)[sample_cols]
+                # Convert to a feature x sample matrix.
+                id_cols = ["Gene", "Accessions"]
+                sample_cols = [c for c in gprot_corr.columns if c not in id_cols]
+                gprot_mat = gprot_corr.set_index(id_cols)[sample_cols]
 
-            # Pool-bridge (skipped when cfg['bridge_enabled'] is False).
-            gprot_brg = bridge_if_enabled(gprot_mat, cfg)
-
-            gprot_brg.to_csv(os.path.join(run_dir, "07_post_pool_bridge.csv"))
-
-            # QC heatmap AFTER bridging
-            qc_heatmap_post_bridge(
-                gprot_brg.dropna(),
-                out_png=os.path.join(run_dir, "07_QC_heatmap_post_pool_bridge.png"),
-                top_n=cfg["qc_top_n"],
-                zscore=cfg["qc_zscore"],
-                title=f"{out_prefix} QC heatmap (post pool-bridge)",
-            )
-            #print(f"[run] Wrote QC outputs for: {base}", flush=True)
-            sp.succeed(f"{out_prefix} — QC outputs + heatmap ")
+                if cfg.get("bridge_enabled", True):
+                    gprot_brg = bridge_if_enabled(gprot_mat, cfg)
+                    gprot_brg.to_csv(os.path.join(run_dir, "07_post_pool_bridge.csv"))
+                    qc_heatmap_post_bridge(
+                        gprot_brg.dropna(),
+                        out_png=os.path.join(run_dir, "07_QC_heatmap_post_pool_bridge.png"),
+                        top_n=cfg["qc_top_n"],
+                        zscore=cfg["qc_zscore"],
+                        title=f"{out_prefix} QC heatmap (post pool-bridge)",
+                    )
+                else:
+                    qc_heatmap_post_bridge(
+                        gprot_mat.dropna(),
+                        out_png=os.path.join(run_dir, "07_QC_heatmap_no_bridging.png"),
+                        top_n=cfg["qc_top_n"],
+                        zscore=cfg["qc_zscore"],
+                        title=f"{out_prefix} QC heatmap (no bridging)",
+                    )
+                #print(f"[run] Wrote QC outputs for: {base}", flush=True)
+                sp.succeed(f"{out_prefix} — QC outputs + heatmap ")
+        except Exception:
+            print(f"\n[error] gprot QC failed for expType={index!r}", file=sys.stderr)
+            raise
 
     if do_post_bridge:
         # Combined post-bridge outputs (After bridging)

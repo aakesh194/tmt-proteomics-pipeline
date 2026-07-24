@@ -1,6 +1,7 @@
 """Phosphoproteomics (phos) specific processing"""
 
 import os
+import sys
 import numpy as np
 import pandas as pd
 
@@ -578,40 +579,53 @@ def run_phos_pipeline(cfg=None, exp_types=None):
     
     stats = {}
     for index in indices:
-        result = process_phos_dataset(index, dataDF, cfg)
-        stats[index] = result
+        try:
+            result = process_phos_dataset(index, dataDF, cfg)
+            stats[index] = result
+        except Exception:
+            print(f"\n[error] phos processing failed for expType={index!r}", file=sys.stderr)
+            raise
 
     out_dir = cfg["out_dir"]
     project = infer_project_name(list(indices))
     phos_prefix = f"phos_{project}"
 
     for index in indices:
-        out_prefix = str(index)
-        run_dir = os.path.join(out_dir, out_prefix, out_label)
-        phos_corr_path = os.path.join(run_dir, f"{file_prefix_}06_corr_phos.csv")
+        try:
+            out_prefix = str(index)
+            run_dir = os.path.join(out_dir, out_prefix, out_label)
+            phos_corr_path = os.path.join(run_dir, f"{file_prefix_}06_corr_phos.csv")
 
-        with Halo(spinner="dots", color="cyan", text="generating combined QC heatmap...") as sp:
-            phos_corr = pd.read_csv(phos_corr_path)
+            with Halo(spinner="dots", color="cyan", text="generating combined QC heatmap...") as sp:
+                phos_corr = pd.read_csv(phos_corr_path)
 
-            # Convert to a feature x sample matrix.
-            id_cols = ["Gene", "Accessions", "Site"]
-            sample_cols = [c for c in phos_corr.columns if c not in id_cols]
-            phos_mat = phos_corr.set_index(id_cols)[sample_cols]
+                # Convert to a feature x sample matrix.
+                id_cols = ["Gene", "Accessions", "Site"]
+                sample_cols = [c for c in phos_corr.columns if c not in id_cols]
+                phos_mat = phos_corr.set_index(id_cols)[sample_cols]
 
-            # Pool-bridge (skipped when cfg['bridge_enabled'] is False).
-            phos_brg = bridge_if_enabled(phos_mat, cfg)
-
-            phos_brg.to_csv(os.path.join(run_dir, f"{file_prefix_}07_post_pool_bridge.csv"))
-
-            # QC heatmap AFTER bridging
-            qc_heatmap_post_bridge(
-                phos_brg.dropna(),
-                out_png=os.path.join(run_dir, "07_QC_heatmap_post_pool_bridge.png"),
-                top_n=cfg["qc_top_n"],
-                zscore=cfg["qc_zscore"],
-                title=f"{out_prefix} QC heatmap (post pool-bridge)",
-            )
-            sp.succeed(f"{out_prefix} — QC outputs + heatmap ")
+                if cfg.get("bridge_enabled", True):
+                    phos_brg = bridge_if_enabled(phos_mat, cfg)
+                    phos_brg.to_csv(os.path.join(run_dir, f"{file_prefix_}07_post_pool_bridge.csv"))
+                    qc_heatmap_post_bridge(
+                        phos_brg.dropna(),
+                        out_png=os.path.join(run_dir, "07_QC_heatmap_post_pool_bridge.png"),
+                        top_n=cfg["qc_top_n"],
+                        zscore=cfg["qc_zscore"],
+                        title=f"{out_prefix} QC heatmap (post pool-bridge)",
+                    )
+                else:
+                    qc_heatmap_post_bridge(
+                        phos_mat.dropna(),
+                        out_png=os.path.join(run_dir, "07_QC_heatmap_no_bridging.png"),
+                        top_n=cfg["qc_top_n"],
+                        zscore=cfg["qc_zscore"],
+                        title=f"{out_prefix} QC heatmap (no bridging)",
+                    )
+                sp.succeed(f"{out_prefix} — QC outputs + heatmap ")
+        except Exception:
+            print(f"\n[error] phos QC failed for expType={index!r}", file=sys.stderr)
+            raise
 
     # Combined post-bridge outputs (After bridging)
     if do_post_bridge:

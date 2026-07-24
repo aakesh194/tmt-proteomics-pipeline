@@ -6,6 +6,7 @@ import sys
 import os
 import json
 import time
+import traceback
 from datetime import datetime
 
 from pipeline.gprot_processing import run_gprot_pipeline
@@ -104,4 +105,5 @@ except KeyboardInterrupt:
 
 except Exception as e:
     print(f"\n[error] pipeline failed: {e}", file=sys.stderr)
+    traceback.print_exc(file=sys.stderr)
     sys.exit(1)
