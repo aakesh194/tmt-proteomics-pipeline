@@ -22,7 +22,7 @@ _If you don’t have conda installed, install [Miniconda](https://docs.conda.io/
 - Raw files (PSMs, MGF, peptide groups, mods) → `data/raw-files/`
 - Library CSVs → `data/library-files/`
 - Metadata CSVs → `data/`
-- PhosphoSitePlus motif file → `data/`
+- SwissProt FASTA (used to generate phosphosite motifs) → `data/`
 
 **Edit `config.yaml` to match your experiment — at minimum update the metadata file paths — then run:**
 ```bash

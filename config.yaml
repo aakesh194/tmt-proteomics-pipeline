@@ -22,16 +22,17 @@ out_dir: "outputs"
 meta_prot_csv: "data/metaFiles_gProt_BHA_2.csv"
 meta_phos_csv: "data/metaFiles_gphos_BHA_2.csv"
 
-# PhosphoSitePlus motif reference
-phos_site_csv: "data/Phosphosite Motifs_M.csv"
+# SwissProt FASTA used to generate phosphosite motifs (±7 flanks).
+# The entry's accession is looked up by the PSM's Master Protein Accession.
+swissprot_fasta: "data/SwissProt_2025_03.fasta"
 
 
 ## -- Bridge / pool channel -- ##
-# Set bridge_enabled: false for experiments WITHOUT a pool/bridge channel —
-# bridge normalization is skipped and sample abundances pass through untouched.
+# Enable bridge normalization (set false if no bridge/pool channel exists)
 bridge_enabled: true
 
-# Regex identifying pool columns (rarely changes); ignored when bridge_enabled=false
+# Regex matching bridge/pool channel names
+# ignored when bridge_enabled = false
 pool_regex: "BRG"
 
 
@@ -84,7 +85,7 @@ phos_min_abundance: 1000
 # Minimum PhosphoRS site probability (0–100); higher = stricter localization
 phos_ptmrs_threshold: 50
 
-# Enrichment-specific filter: "pY" or "pSQTQ" (leave blank to disable)
+# Filter by enrichment type: "pY" or "pSQTQ" (leave blank to disable)
 phos_enrichment_filter: ""
 
 
@@ -105,9 +106,9 @@ qc_top_n: 300
 qc_zscore: true
 
 
-# ============================ #
-#  ADVANCED — LAB CONVENTIONS  #
-# ============================ #
+# ======================================== #
+#  ADVANCED SETTINGS (normally unchanged)  #
+# ======================================== #
 
 # Column in the metadata CSV that identifies each experiment
 meta_index: "expType"
@@ -127,9 +128,7 @@ abundance_contains: "Abundance"
 # Regex pattern for PTM filtering in the Modifications column
 phos_mod_filter: "Phos"
 
-# Column names for the PhosphoSitePlus motif reference (phos_site_csv, above).
-# Defaults match `data/Phosphosite Motifs_M.csv`; for other PSP exports these
-# may differ (e.g. MOD_RSD -> Site, SITE_7_AA -> Motif).
-phos_site_accession_col: "Accession"
-phos_site_site_col:      "Site"
-phos_site_motif_col:     "Motif"
+# Flank width for FASTA-derived motifs. 7 → 15-mer (Kinase Library standard):
+# 7 residues upstream, the phosphosite (lowercase), 7 residues downstream.
+# Out-of-protein positions are padded with "_".
+phos_motif_flank: 7

@@ -1,6 +1,7 @@
 """Phosphoproteomics (phos) specific processing"""
 
 import os
+import re
 import sys
 import numpy as np
 import pandas as pd
@@ -30,6 +31,10 @@ sumPSM = {}
 corrDFs = {}
 libsDict = {}
 
+# Cache of parsed FASTA files keyed by absolute path \u2014 SwissProt is ~286 MB and
+# we only want to parse it once even when multiple phos experiments run back-to-back.
+_FASTA_CACHE = {}
+
 
 def _reset_run_state():
     """Reset global data stores."""
@@ -38,34 +43,70 @@ def _reset_run_state():
     corrDFs.clear()
     libsDict.clear()
 
-def _read_phosphositeplus_csv(path: str, cfg: dict) -> pd.DataFrame:
-    """
-    Read a PhosphoSitePlus motif CSV while tolerating occasional junk/metadata lines
-    *before* the real header row (common in some PSP downloads/exports).
-    """
-    accession_col = cfg.get("phos_site_accession_col", "Accession")
-    site_col = cfg.get("phos_site_site_col", "Site")
-    motif_col = cfg.get("phos_site_motif_col", "Motif")
-    required = {accession_col, site_col, motif_col}
 
-    header_row = 0
-    try:
-        with open(path, "r", encoding="utf-8", errors="replace") as fh:
-            for i, line in enumerate(fh):
-                if i > 200:
-                    break
-                # Strip BOM and whitespace
-                raw = line.lstrip("\ufeff").strip()
-                if not raw:
-                    continue
-                cols = [c.strip().strip('"') for c in raw.split(",")]
-                if required.issubset(set(cols)):
-                    header_row = i
-                    break
-    except OSError:
-        header_row = 0
+_FASTA_HEADER_RE = re.compile(r"^>(?:sp|tr)\|([^|]+)\|")
+_SITE_RE = re.compile(r"\s*([A-Za-z])\s*(\d+)\s*")
 
-    return pd.read_csv(path, sep=",", skiprows=header_row)
+
+def _read_swissprot_fasta(path: str) -> dict:
+    """Parse a UniProt SwissProt/TrEMBL FASTA into {accession: sequence}."""
+    key = os.path.abspath(path)
+    if key in _FASTA_CACHE:
+        return _FASTA_CACHE[key]
+
+    proteins = {}
+    acc = None
+    chunks = []
+    with open(path, "r", encoding="utf-8", errors="replace") as fh:
+        for line in fh:
+            line = line.rstrip("\r\n")
+            if not line:
+                continue
+            if line.startswith(">"):
+                if acc is not None:
+                    proteins[acc] = "".join(chunks).upper()
+                m = _FASTA_HEADER_RE.match(line)
+                acc = m.group(1) if m else line[1:].split()[0]
+                chunks = []
+            else:
+                chunks.append(line)
+        if acc is not None:
+            proteins[acc] = "".join(chunks).upper()
+
+    _FASTA_CACHE[key] = proteins
+    return proteins
+
+
+def _motif_from_fasta(accession: str, site_str: str, peptide_seq: str,
+                      fasta_dict: dict, flank: int = 7) -> str:
+    """15-mer motif (flank=7) centered on `site_str` (e.g. 'S123'), lowercased
+    at the phosphosite, underscore-padded past protein termini.
+
+    Falls back to `peptide_seq` when the accession isn't in the FASTA or the
+    site can't be resolved (unparseable, out of range, residue mismatch).
+    """
+    m = _SITE_RE.match(str(site_str) if site_str is not None else "")
+    if not m:
+        return peptide_seq if isinstance(peptide_seq, str) else ""
+    residue = m.group(1).upper()
+    pos = int(m.group(2))
+
+    seq = fasta_dict.get(accession) if isinstance(accession, str) else None
+    if not seq or pos < 1 or pos > len(seq):
+        return peptide_seq if isinstance(peptide_seq, str) else ""
+    if seq[pos - 1] != residue:
+        return peptide_seq if isinstance(peptide_seq, str) else ""
+
+    center = pos - 1
+    parts = []
+    for i in range(center - flank, center + flank + 1):
+        if 0 <= i < len(seq):
+            aa = seq[i]
+            parts.append(aa.lower() if i == center else aa)
+        else:
+            parts.append("_")
+    return "".join(parts)
+
 
 def _resolve_sup_corr_path(sup_corr_value, out_dir: str, out_prefix: str) -> str:
     """
@@ -216,15 +257,17 @@ def phos_filter(df, exp_type, cfg):
 
     return phosfilter, start, end
 
-def sum_psms_phos(df, pepts, mods, phos_site, exp_type, cfg, out_dir=""):
+def sum_psms_phos(df, pepts, fasta_dict, exp_type, cfg, out_dir=""):
     """
     Sum PSMs to phosphosite level and add site/motif annotations.
-    
+
     1. Parses PhosphoRS localization
     2. Maps peptide sites to protein sites
-    3. Assigns motifs from modification files
-    4. Assigns motifs from PhosphoSitePlus database
-    5. Sums to final phosphosite level
+    3. Generates motifs from the SwissProt FASTA (±FLANK around each site,
+       lowercase at the phosphosite, underscore padding past termini);
+       falls back to the peptide sequence when the accession or site can't
+       be resolved in the FASTA
+    4. Sums to final phosphosite level
     """
     #print(f"    Summarizing phosphosites with motif annotation...")
     
@@ -363,73 +406,19 @@ def sum_psms_phos(df, pepts, mods, phos_site, exp_type, cfg, out_dir=""):
     
     phosSum1['ID'] = phosSum1['Accessions'] + '_' + phosSum1['Peptide Sequence']
     phosSum1 = phosSum1.groupby(['Peptide Sequence', 'Gene', 'Accessions', 'Site', 'ptmRS', 'ID']).agg('sum', numeric_only=True).reset_index()
-    
-    # Prepare modifications table for motif extraction
-    mods1 = mods[mods['Confidence'] == 'High']
-    if cfg.get("phos_filter_pY", True) and 'pY' in exp_type:
-        mods1 = mods1[mods1['Target Amino Acid'] == 'Y']
-    mods1 = mods1[['Target Amino Acid', 'Position in Peptide', 'Peptide Sequence', 'Protein Accession', 'Position', 'Motif']]
-    mods1['Site in peptide'] = mods1['Target Amino Acid'].astype('string') + mods1['Position in Peptide'].astype('string')
-    mods1['Site in Protein'] = mods1['Target Amino Acid'].astype('string') + mods1['Position'].astype('string')
-    mods1['ID'] = mods1['Protein Accession'] + '_' + mods1['Peptide Sequence']
-    mods2 = mods1[['ID', 'Site in Protein', 'Motif']]
-    
-    phosSum2 = phosSum1.copy()
-    phosSum2['Motif'] = ''
 
-    # map motifs from mods file
-    mods_lookup = (
-        mods2.groupby(['ID', 'Site in Protein'])['Motif']
-        .first()
-    )
+    # Generate motifs directly from the SwissProt FASTA, one per site in each row.
+    flank = int(cfg.get("phos_motif_flank", 7))
 
-    def map_mods_motif(row):
+    def build_motifs(row):
         sites = str(row['Site']).split(', ')
-        result = []
-        for s in sites:
-            try:
-                result.append(mods_lookup.loc[(row['ID'], s)])
-            except KeyError:
-                result.append('X')
-        return ', '.join(result)
+        return ', '.join(
+            _motif_from_fasta(row['Accessions'], s, row['Peptide Sequence'], fasta_dict, flank)
+            for s in sites
+        )
 
-    phosSum2['Motif'] = phosSum2.apply(map_mods_motif, axis=1)
-
-    # map motifs from PhosphoSitePlus for anything still X
-    phos_lookup = (
-        phos_site.groupby(['Accession', 'Site'])['Motif']
-        .first()
-    )
-
-    def map_phos_motif(row):
-        if 'X' not in str(row['Motif']):
-            return row['Motif']
-        sites  = str(row['Site']).split(', ')
-        motifs = str(row['Motif']).split(', ')
-        result = []
-        for s, m in zip(sites, motifs, strict=True):
-            if 'X' in m:
-                try:
-                    result.append(phos_lookup.loc[(row['Accessions'], s)])
-                except KeyError:
-                    result.append('X')
-            else:
-                result.append(m)
-        return ', '.join(result)
-
-    phosSum3 = phosSum2.copy()
-    phosSum3['Motif'] = phosSum3.apply(map_phos_motif, axis=1)
-
-    # fallback — use peptide sequence if still X
-    def map_fallback(row):
-        if 'X' not in str(row['Motif']):
-            return row['Motif']
-        motifs = str(row['Motif']).split(', ')
-        return ', '.join([row['Peptide Sequence'] if 'X' in m else m for m in motifs])
-
-    phosSum4 = phosSum3.copy()
-    phosSum4['Motif'] = phosSum4.apply(map_fallback, axis=1)
-
+    phosSum4 = phosSum1.copy()
+    phosSum4['Motif'] = phosSum4.apply(build_motifs, axis=1)
     phosSum4 = phosSum4.drop(['Peptide Sequence', 'ptmRS', 'ID'], axis=1, errors='ignore')
     phosSum4 = phosSum4.groupby(['Gene', 'Accessions', 'Site', 'Motif']).agg('sum', numeric_only=True)
 
@@ -471,31 +460,28 @@ def process_phos_dataset(index, dataDF, cfg):
     mgf_path = os.path.join(raw_dir, dataDF.loc[index, cfg["meta_cols"]["mgf"]])
     lib_path = os.path.join(lib_dir, dataDF.loc[index, cfg["meta_cols"]["library"]])
     pepts_path = os.path.join(raw_dir, dataDF.loc[index, cfg["meta_cols"]["pepts"]])
-    mods_path = os.path.join(raw_dir, dataDF.loc[index, cfg["meta_cols"]["mods"]])
     sup_corr_value = dataDF.loc[index, cfg["meta_cols"]["sup_corr"]]
 
-
-    phos_site_path = cfg.get("phos_site_csv", "Phosphosite Motifs_M.csv")
-
+    fasta_path = cfg.get("swissprot_fasta")
+    if not fasta_path:
+        raise KeyError("config is missing 'swissprot_fasta' (path to SwissProt FASTA for motif generation)")
+    if not os.path.exists(fasta_path):
+        raise FileNotFoundError(
+            f"SwissProt FASTA not found at '{fasta_path}'. "
+            "Set `swissprot_fasta` in config.yaml to a valid path."
+        )
 
     with Halo(spinner="dots", color="cyan") as sp:
         # Load input files
         sp.text = f"  {out_prefix} — reading files"
-        #print(f"    Reading PSMs: {os.path.basename(psms_path)}")
         psms = pd.read_csv(psms_path, sep="\t")
         psm_start = len(psms)
-        #print(f"    Reading MGF: {os.path.basename(mgf_path)}")
         mgf_dict = mgf.read(mgf_path)
-        #print(f"    Reading library: {os.path.basename(lib_path)}")
         libs = pd.read_csv(lib_path).set_index("headers").to_dict()["names"]
-        #print(f"    Reading peptides: {os.path.basename(pepts_path)}")
         pepts = pd.read_csv(pepts_path, sep="\t")
-        #print(f"    Reading mods: {os.path.basename(mods_path)}")
-        mods = pd.read_csv(mods_path, sep='\t')
         sup_corr_path = _resolve_sup_corr_path(sup_corr_value, out_dir, out_prefix)
         corrSum = pd.read_csv(sup_corr_path)
-        #print(f"    Reading PhosphoSitePlus: {os.path.basename(phos_site_path)}")
-        phos_site = _read_phosphositeplus_csv(phos_site_path, cfg)
+        fasta_dict = _read_swissprot_fasta(fasta_path)
         
         libsDict[index] = libs
         
@@ -516,7 +502,7 @@ def process_phos_dataset(index, dataDF, cfg):
         
         # Summarize to phosphosite level with motifs
         sp.text = f"  {out_prefix} — motif mapping..."
-        sumPSMdf = sum_psms_phos(PSMdf, pepts, mods, phos_site, out_prefix, cfg, out_dir=run_dir)
+        sumPSMdf = sum_psms_phos(PSMdf, pepts, fasta_dict, out_prefix, cfg, out_dir=run_dir)
         sumPSMdf.to_csv(os.path.join(run_dir, f"{file_prefix_}04_sum_psms_phos.csv"))
         qc_warn_no_row_change("phosphosite summarization", psm_end, len(sumPSMdf), context=out_prefix)
         sumPSM[index] = sumPSMdf
@@ -588,7 +574,7 @@ def run_phos_pipeline(cfg=None, exp_types=None):
 
     out_dir = cfg["out_dir"]
     project = infer_project_name(list(indices))
-    phos_prefix = f"phos_{project}"
+    phos_prefix = f"{out_label}_{project}"
 
     for index in indices:
         try:

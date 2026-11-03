@@ -68,8 +68,7 @@ def shipped_cfg_raw():
 
 
 STRING_KEYS = [
-    "meta_prot_csv", "meta_phos_csv", "phos_site_csv",
-    "phos_site_accession_col", "phos_site_site_col", "phos_site_motif_col",
+    "meta_prot_csv", "meta_phos_csv", "swissprot_fasta",
     "meta_index", "raw_dir", "lib_dir", "out_dir",
     "require_mod_contains", "abundance_contains", "pool_regex",
     "phos_mod_filter", "phos_output_folder", "phos_output_file_prefix",
@@ -80,6 +79,7 @@ NUMERIC_KEYS = [
     "gprot_top_quantile", "gprot_low_variance_quantile",
     "min_fraction_channels_present",
     "phos_min_abundance", "phos_ptmrs_threshold", "qc_top_n",
+    "phos_motif_flank",
 ]
 
 BOOL_KEYS = [

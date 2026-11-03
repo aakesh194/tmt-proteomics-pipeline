@@ -14,7 +14,8 @@ from pyteomics import mgf
 
 from pipeline.proteomics_core import PSM_filter, nan_imputation
 from pipeline.phos_processing import (
-    _read_phosphositeplus_csv,
+    _motif_from_fasta,
+    _read_swissprot_fasta,
     _resolve_sup_corr_path,
     phos_filter,
     process_phos_dataset,
@@ -66,6 +67,67 @@ def test_03_phos_filter(phos_filter_cfg, exp_type, ptmrs_override, expected_sequ
     filtered, _, end = phos_filter(_phos_df(), exp_type=exp_type, cfg=cfg)
     assert end == len(expected_sequences)
     assert sorted(filtered["Sequence"].tolist()) == sorted(expected_sequences)
+
+
+# ═══════════════════════════════════════════════════════════════════════
+# SwissProt FASTA parsing + motif generation (Stage 04 motif source)
+# ═══════════════════════════════════════════════════════════════════════
+
+def test_read_swissprot_fasta_basic(tmp_path):
+    """Parses UniProt headers, concatenates wrapped sequences, upper-cases."""
+    p = tmp_path / "mini.fasta"
+    p.write_text(
+        ">sp|P12345|GENE_HUMAN Something GN=GENE PE=1 SV=1\n"
+        "MKTAYIAKQR\n"
+        "QISFVKSHFSRQ\n"
+        ">sp|Q67890|OTHER_HUMAN\n"
+        "mkllvvllil\n"
+    )
+    out = _read_swissprot_fasta(str(p))
+    assert out["P12345"] == "MKTAYIAKQRQISFVKSHFSRQ"
+    assert out["Q67890"] == "MKLLVVLLIL"
+
+
+def test_motif_from_fasta_centered():
+    """Site in the middle of a long sequence → 15-mer with lowercase center."""
+    seq = "ATTTPSGSPRTSQQNQKL"      # S at pos 8 (1-based)
+    fd = {"P1": seq}
+    # position 8 is S; flank=7 → 7 residues before + s + 7 after
+    motif = _motif_from_fasta("P1", "S8", "FALLBACK", fd, flank=7)
+    assert motif == "ATTTPSGsPRTSQQN"
+    assert len(motif) == 15
+
+
+def test_motif_from_fasta_right_pad():
+    """Site near C-terminus → underscore-padded on the right."""
+    seq = "QDYVSTQSAEE"              # S at pos 8, only 3 residues after it
+    motif = _motif_from_fasta("P1", "S8", "FALLBACK", {"P1": seq}, flank=7)
+    assert motif == "QDYVSTQsAEE____"
+    assert len(motif) == 15
+
+
+def test_motif_from_fasta_left_pad():
+    """Site near N-terminus → underscore-padded on the left."""
+    seq = "SYPEPTIDE"                 # S at pos 1 → 7 underscores then s then YPEPTID
+    motif = _motif_from_fasta("P1", "S1", "FALLBACK", {"P1": seq}, flank=7)
+    assert motif == "_______sYPEPTID"
+    assert len(motif) == 15
+
+
+def test_motif_from_fasta_missing_accession():
+    """Accession not in the FASTA → peptide-sequence fallback."""
+    assert _motif_from_fasta("NOPE", "S1", "FALLBACKPEP", {"P1": "SYPEPTIDE"}) == "FALLBACKPEP"
+
+
+def test_motif_from_fasta_residue_mismatch():
+    """Residue in the site string doesn't match sequence → fallback."""
+    # Site says T at pos 1 but sequence has S there.
+    assert _motif_from_fasta("P1", "T1", "FALLBACK", {"P1": "SYPEPTIDE"}) == "FALLBACK"
+
+
+def test_motif_from_fasta_out_of_range():
+    """Site position past end of protein → fallback."""
+    assert _motif_from_fasta("P1", "S999", "FALLBACK", {"P1": "SYPEPTIDE"}) == "FALLBACK"
 
 
 # ═══════════════════════════════════════════════════════════════════════
@@ -134,18 +196,16 @@ def test_04_sum_psms_phos_real(real_phos, shipped_cfg, tmp_path):
     Full stage 04 phos pipeline on real subset:
       raw PSMs → PSM_filter → nan_imputation → phos_filter → sum_psms_phos
     Verifies output is indexed by (Gene, Accessions, Site) and motif CSV is written.
-    Falls back to tests/fixtures/phos_site_stub.csv if the shipped PSP file is
-    absent (it is gitignored under data/).
+    Skips when the shipped SwissProt FASTA isn't available (it is ~286 MB
+    and lives under data/, which is gitignored).
     """
-    from pathlib import Path as _Path
     psms  = pd.read_csv(real_phos["psms"],  sep="\t")
     libs  = pd.read_csv(real_phos["library"]).set_index("headers")["names"].to_dict()
     pepts = pd.read_csv(real_phos["pepts"], sep="\t")
-    mods  = pd.read_csv(real_phos["mods"],  sep="\t")
-    phos_site_path = shipped_cfg["phos_site_csv"]
-    if not os.path.exists(phos_site_path):
-        phos_site_path = str(_Path(__file__).parent / "fixtures" / "phos_site_stub.csv")
-    phos_site = _read_phosphositeplus_csv(phos_site_path, shipped_cfg)
+    fasta_path = shipped_cfg.get("swissprot_fasta", "")
+    if not fasta_path or not os.path.exists(fasta_path):
+        pytest.skip(f"SwissProt FASTA not available at {fasta_path!r}")
+    fasta_dict = _read_swissprot_fasta(fasta_path)
 
     filtered = PSM_filter(psms, libs, shipped_cfg)
     imputed = nan_imputation(filtered, mgf.read(real_phos["mgf"]), shipped_cfg)
@@ -155,7 +215,7 @@ def test_04_sum_psms_phos_real(real_phos, shipped_cfg, tmp_path):
         pytest.skip("no phospho-passing PSMs in this subset")
 
     out = sum_psms_phos(
-        phos_filtered, pepts, mods, phos_site,
+        phos_filtered, pepts, fasta_dict,
         exp_type="test_pST", cfg=shipped_cfg, out_dir=str(tmp_path),
     )
     assert list(out.index.names) == ["Gene", "Accessions", "Site"]
@@ -245,6 +305,8 @@ def phos_run_env(tmp_path):
     }).to_csv(raw_dir / "pepts.txt", sep="\t", index=False)
 
     # ── ModificationSites: one high-confidence site per PSM ────────────
+    # Still read into the raw/metadata layout for backward compatibility; the
+    # motif pipeline no longer consumes it (FASTA is the sole motif source).
     pd.DataFrame({
         "Confidence":          ["High", "High"],
         "Target Amino Acid":   ["S", "Y"],
@@ -255,12 +317,11 @@ def phos_run_env(tmp_path):
         "Motif":               ["_SPEPTIDE_", "_YPEPTIDE_"],
     }).to_csv(raw_dir / "mods.txt", sep="\t", index=False)
 
-    # ── PhosphoSitePlus: motif lookup ──────────────────────────────────
-    pd.DataFrame({
-        "Accession": ["P1", "P1"],
-        "Site":      ["S1", "Y2"],
-        "Motif":     ["_SPEPTIDE_", "_YPEPTIDE_"],
-    }).to_csv(raw_dir / "phos_site.csv", index=False)
+    # ── SwissProt FASTA stub ───────────────────────────────────────────
+    # P1 contains S at pos 1 and Y at pos 2, matching the PSM sites above.
+    (raw_dir / "swissprot_stub.fasta").write_text(
+        ">sp|P1|GENE_A_HUMAN GN=GENE_A\nSYPEPTIDE\n"
+    )
 
     # ── Pre-existing gprot correction factors (phos consumes this) ─────
     pd.DataFrame({"Abundance 126": [1.0], "Abundance 127": [1.0]}).to_csv(
@@ -292,11 +353,9 @@ def phos_run_env(tmp_path):
         "phos_ptmrs_threshold": 0,
         "phos_enrichment_filter": "",
         "phos_filter_pY": False,
-        # phos-site lookup columns (match the CSV we wrote)
-        "phos_site_csv": str(raw_dir / "phos_site.csv"),
-        "phos_site_accession_col": "Accession",
-        "phos_site_site_col": "Site",
-        "phos_site_motif_col": "Motif",
+        # SwissProt FASTA (sole motif source)
+        "swissprot_fasta": str(raw_dir / "swissprot_stub.fasta"),
+        "phos_motif_flank": 7,
         # output
         "phos_output_prefix": "phos",
         # paths
